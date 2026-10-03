@@ -197,7 +197,7 @@ interface Settings {
   hf_token_set: boolean;                             // только флаг, сам токен в JS не попадает
 }
 interface TokenCheck { ok: boolean; state: "ok"|"missing"|"invalid"|"terms_not_accepted"|"network";
-  user: string | null; repos: {id: string; url: string; ok: boolean}[]; message: string }
+  user: string | null; repos: {id: string; url: string; ok: boolean | null}[]   // null = не проверялся; message: string }
 interface ModelsStatus {
   gigaam: { available: boolean; size_bytes: number; downloading: boolean; progress: number };
   pyannote: { cached: boolean; token_ok: boolean | null };
@@ -217,6 +217,7 @@ interface Job {
   progress: number; stage_progress: number; message: string; eta_s: number | null;
   created_at: number; started_at: number | null; finished_at: number | null;   // unix seconds
   error: string | null; transcript_id: string | null; options: JobOptions;
+  duration: number | null;          // секунды, probe_duration; null пока неизвестно
 }
 interface Word { w: string; s: number; e: number }
 interface Segment { index: number; start: number; end: number; speaker: string | null; text: string; words: Word[] }
@@ -235,6 +236,7 @@ interface HistoryItem { id: string; file_name: string; created_at: number; durat
 | Метод | Возврат | Примечание |
 |---|---|---|
 | `get_state()` | `AppState` | первый вызов UI |
+| `complete_onboarding()` | `AppState` | сохраняет `onboarding_done`, дальше `first_run=false` |
 | `pick_files()` | `string[]` | нативный диалог, фильтр аудио/видео, мультивыбор |
 | `choose_folder()` | `string \| null` | для autosave_dir |
 | `enqueue(paths, options)` | `Job[]` | |
