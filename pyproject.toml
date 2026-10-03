@@ -80,6 +80,7 @@ all = [
 ]
 
 [project.scripts]
+bp-transcriber = "bp_transcriber.app:main"
 gigaam-transcribe = "gigaam_transcriber.cli:main"
 gigaam-batch = "gigaam_transcriber.cli:batch_main"
 
@@ -94,6 +95,7 @@ include = ["gigaam_transcriber*", "bp_transcriber*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.json"]
+"bp_transcriber" = ["ui/**/*"]
 
 [tool.black]
 line-length = 100

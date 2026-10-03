@@ -203,6 +203,7 @@ function createMockApi() {
   }
 
   return {
+    async complete_onboarding() { return this.get_state(); },
     async get_state() {
       await sleep(80);
       return {

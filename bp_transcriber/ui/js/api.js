@@ -56,7 +56,7 @@ async function call(name, args = [], opts = {}) {
 }
 
 const METHODS = [
-  'get_state', 'pick_files', 'choose_folder', 'enqueue', 'list_jobs', 'cancel_job', 'remove_job',
+  'get_state', 'complete_onboarding', 'pick_files', 'choose_folder', 'enqueue', 'list_jobs', 'cancel_job', 'remove_job',
   'get_settings', 'save_settings', 'set_hf_token', 'import_hf_token', 'clear_hf_token', 'check_hf_token',
   'models_status', 'download_models', 'list_history', 'load_transcript', 'rename_speaker', 'edit_segment',
   'delete_transcript', 'export', 'copy_text', 'reveal', 'open_url',

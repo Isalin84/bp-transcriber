@@ -89,9 +89,9 @@ export function show() {
     }
     function finish() {
       try { localStorage.setItem(ONBOARDED_KEY, '1'); } catch (_) { /* ignore */ }
-      // The backend clears first_run on its side; mirror it locally so the overlay does not return.
+      // The backend persists onboarding_done; mirror it locally so the overlay does not return.
       store.patchApp({ first_run: false });
-      api.save_settings({}).catch(() => {});
+      api.complete_onboarding().catch(() => {});
       model.destroy();
       overlay.classList.remove('is-in');
       setTimeout(() => overlay.remove(), 240);

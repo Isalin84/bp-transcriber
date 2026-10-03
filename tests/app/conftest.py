@@ -19,6 +19,9 @@ def isolated_home(tmp_path, monkeypatch):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("HF_HOME", str(tmp_path / "hfhome"))
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path / "userhome"))
+    # .env ищем только в текущем каталоге теста, а не в корне репозитория разработчика
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("bp_transcriber.settings._dotenv_dirs", lambda: [Path.cwd()])
     yield
 
 
