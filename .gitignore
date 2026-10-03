@@ -152,3 +152,7 @@ cython_debug/
 
 # Claude Code local worktrees/settings
 .claude/
+
+# Windows installer (Inno Setup) helper files
+packaging/windows/redist/
+packaging/windows/build/
