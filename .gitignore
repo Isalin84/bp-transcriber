@@ -156,3 +156,8 @@ cython_debug/
 # Windows installer (Inno Setup) helper files
 packaging/windows/redist/
 packaging/windows/build/
+
+# Сырые ассеты от ChatGPT: финальные копии лежат в docs/images, packaging/*/assets, ui/img
+design/incoming/**/*.png
+design/incoming/**/*.jpg
+.playwright-mcp/

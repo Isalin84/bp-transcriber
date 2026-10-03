@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/transcribe-dark.png" alt="BP Transcriber: главный экран" width="860">
+  <img src="docs/images/readme-hero.png" alt="BP Transcriber — транскрибатор русской речи" width="860">
 </p>
 
 <h1 align="center">BP Transcriber</h1>

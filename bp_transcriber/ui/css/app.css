@@ -516,3 +516,6 @@ kbd.kbd--on-accent { border-color: rgba(11,29,58,.25); color: rgba(11,29,58,.75)
   .onb__body { min-height: 180px; }
   .onb { gap: var(--sp-4); padding-top: var(--sp-6); padding-bottom: var(--sp-5); }
 }
+
+/* Иллюстрация в «О программе» (прозрачный PNG, читается на обеих темах) */
+.about__art { display: block; width: 100%; max-width: 420px; height: auto; margin: 4px auto 12px; }

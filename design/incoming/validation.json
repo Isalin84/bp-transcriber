@@ -1,0 +1,121 @@
+[
+  {
+    "file": "app-icon-1024.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "mode": "RGBA",
+    "bytes": 745432,
+    "alpha_range": [
+      0,
+      255
+    ]
+  },
+  {
+    "file": "dmg-background.png",
+    "size": [
+      660,
+      400
+    ],
+    "mode": "RGB",
+    "bytes": 211957,
+    "alpha_range": null
+  },
+  {
+    "file": "dmg-background@2x.png",
+    "size": [
+      1320,
+      800
+    ],
+    "mode": "RGB",
+    "bytes": 831467,
+    "alpha_range": null
+  },
+  {
+    "file": "empty-state.png",
+    "size": [
+      800,
+      600
+    ],
+    "mode": "RGBA",
+    "bytes": 66288,
+    "alpha_range": [
+      0,
+      255
+    ]
+  },
+  {
+    "file": "readme-hero.png",
+    "size": [
+      1600,
+      600
+    ],
+    "mode": "RGB",
+    "bytes": 810299,
+    "alpha_range": null
+  },
+  {
+    "file": "github-social-preview.png",
+    "size": [
+      1280,
+      640
+    ],
+    "mode": "RGB",
+    "bytes": 735360,
+    "alpha_range": null
+  },
+  {
+    "file": "installer-wizard.png",
+    "size": [
+      164,
+      314
+    ],
+    "mode": "RGB",
+    "bytes": 51053,
+    "alpha_range": null
+  },
+  {
+    "file": "installer-wizard@2x.png",
+    "size": [
+      328,
+      628
+    ],
+    "mode": "RGB",
+    "bytes": 178944,
+    "alpha_range": null
+  },
+  {
+    "file": "installer-small.png",
+    "size": [
+      55,
+      58
+    ],
+    "mode": "RGB",
+    "bytes": 5111,
+    "alpha_range": null
+  },
+  {
+    "file": "installer-small@2x.png",
+    "size": [
+      110,
+      116
+    ],
+    "mode": "RGB",
+    "bytes": 13065,
+    "alpha_range": null
+  },
+  {
+    "file": "about-illustration.png",
+    "size": [
+      1200,
+      800
+    ],
+    "mode": "RGBA",
+    "bytes": 195510,
+    "alpha_range": [
+      0,
+      255
+    ]
+  }
+]
