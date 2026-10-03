@@ -301,6 +301,26 @@ class TestHybridDiarizer:
     def test_no_speech(self):
         assert d.HybridDiarizer(device="cpu").diarize(audio_of(1.0), []) == []
 
+    def test_gpu_failure_retries_on_cpu(self, monkeypatch):
+        """Виртуальный Mac: MPS «доступен», но падает на выделении памяти — повтор на CPU."""
+        import torch
+
+        class _BrokenGpu(_FakeEmbedder):
+            def __init__(self) -> None:
+                super().__init__()
+                self.device = torch.device("mps")
+
+            def embed(self, batch):
+                raise RuntimeError("MPS backend out of memory")
+
+        cpu = _FakeEmbedder()
+        monkeypatch.setattr(d, "pick_device", lambda pref: torch.device("mps"))
+        monkeypatch.setattr(d, "_get_embedder", lambda device: cpu if device.type == "cpu" else _BrokenGpu())
+        pcm = np.concatenate([np.full(6 * SAMPLE_RATE, 3000), np.full(6 * SAMPLE_RATE, -3000)]).astype(np.int16)
+        turns = d.HybridDiarizer().diarize(DecodedAudio(pcm=pcm, source=Path("x.wav")), [(0.0, 5.5), (6.5, 12.0)])
+        assert [t.speaker for t in turns] == ["SPEAKER_00", "SPEAKER_01"]
+        assert cpu.batches
+
 
 # =============================================================================
 # pyannote

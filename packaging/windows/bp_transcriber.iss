@@ -51,9 +51,12 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 
-Compression=lzma2/ultra64
+; ultra64 × 4 потока не помещается в адресное пространство ISCC (Out of memory в CI).
+; Отдельный 64-битный процесс сжатия и словарь max (32 МБ) дают почти тот же размер.
+Compression=lzma2/max
 SolidCompression=yes
-LZMANumBlockThreads=4
+LZMAUseSeparateProcess=yes
+LZMANumBlockThreads=2
 DiskSpanning=no
 
 WizardStyle=modern

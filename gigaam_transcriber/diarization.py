@@ -796,22 +796,36 @@ class HybridDiarizer:
             clip = audio.float32(first / SAMPLE_RATE, (first + count) / SAMPLE_RATE)
             clips.append(clip)
             by_length.setdefault(len(clip), []).append(i)
-        batch_size = _HYBRID_BATCH["cpu" if embedder.device.type == "cpu" else "gpu"]
 
-        embeddings: list[np.ndarray | None] = [None] * len(windows)
-        done = 0
-        for indices in by_length.values():
-            for offset in range(0, len(indices), batch_size):
-                if cancel is not None:
-                    cancel.raise_if_cancelled()
-                part = indices[offset : offset + batch_size]
-                batch = torch.from_numpy(np.stack([clips[i] for i in part]))
-                vectors = embedder.embed(batch)
-                for i, vector in zip(part, vectors):
-                    embeddings[i] = vector
-                done += len(part)
-                if on_progress:
-                    on_progress(0.95 * done / len(windows))
+        def embed_all(embedder: _Embedder) -> list[np.ndarray | None]:
+            batch_size = _HYBRID_BATCH["cpu" if embedder.device.type == "cpu" else "gpu"]
+            embeddings: list[np.ndarray | None] = [None] * len(windows)
+            done = 0
+            for indices in by_length.values():
+                for offset in range(0, len(indices), batch_size):
+                    if cancel is not None:
+                        cancel.raise_if_cancelled()
+                    part = indices[offset : offset + batch_size]
+                    batch = torch.from_numpy(np.stack([clips[i] for i in part]))
+                    vectors = embedder.embed(batch)
+                    for i, vector in zip(part, vectors):
+                        embeddings[i] = vector
+                    done += len(part)
+                    if on_progress:
+                        on_progress(0.95 * done / len(windows))
+            return embeddings
+
+        try:
+            embeddings = embed_all(embedder)
+        except Cancelled:
+            raise
+        except Exception as exc:  # noqa: BLE001 - например, MPS без памяти на виртуальном Mac
+            if embedder.device.type == "cpu":
+                raise
+            logger.warning("Эмбеддинги на %s не посчитались (%s), повтор на CPU", embedder.device, exc)
+            embedder = _get_embedder(torch.device("cpu"))
+            self.model_kind = embedder.kind
+            embeddings = embed_all(embedder)
 
         matrix = np.stack([e for e in embeddings if e is not None])
         assert len(matrix) == len(windows)

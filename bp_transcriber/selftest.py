@@ -143,12 +143,22 @@ def _torch() -> dict[str, Any]:
     x = torch.arange(6, dtype=torch.float32).reshape(2, 3)
     info["cpu_matmul"] = float((x @ x.T).sum())
     info["mps"] = _mps_available()
-    if info["mps"]:
-        y = x.to("mps")
-        info["mps_matmul"] = float((y @ y.T).sum().cpu())
-        if info["mps_matmul"] != info["cpu_matmul"]:
-            raise RuntimeError(f"MPS посчитал иначе: {info['mps_matmul']} != {info['cpu_matmul']}")
     return info
+
+
+def _torch_mps() -> dict[str, Any]:
+    """Apple GPU считает так же, как CPU. Необязательная проверка: на виртуальных
+    Mac (в т. ч. раннеры GitHub) MPS «доступен», но не выделяет память — приложение
+    тогда работает на CPU (smoke-тест в GigaAMEngine)."""
+    import torch
+
+    x = torch.arange(6, dtype=torch.float32).reshape(2, 3)
+    expected = float((x @ x.T).sum())
+    y = x.to("mps")
+    got = float((y @ y.T).sum().cpu())
+    if got != expected:
+        raise RuntimeError(f"MPS посчитал иначе: {got} != {expected}")
+    return {"mps_matmul": got}
 
 
 def _device() -> Any:
@@ -299,6 +309,8 @@ def run(stdout: TextIO | None) -> int:
     _check(checks, "decode", _decode)
     _check(checks, "silero_vad", _vad)
     _check(checks, "torch", _torch)
+    if _mps_available():
+        _check(checks, "torch:mps", _torch_mps, required=False)
     _check(checks, "device", _device)
     _check(checks, "pyannote", _pyannote, required=frozen)
     _check(checks, "speechbrain", _speechbrain, required=frozen)
