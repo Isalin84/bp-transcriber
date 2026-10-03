@@ -423,7 +423,7 @@ kbd.kbd--on-accent { border-color: rgba(11,29,58,.25); color: rgba(11,29,58,.75)
 /* ---------- Empty / loading states ---------- */
 .empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--sp-3); padding: var(--sp-12) var(--sp-6); color: var(--text-2); margin: auto; }
 .empty--inline { padding: var(--sp-8); }
-.empty__art { width: 200px; height: 120px; }
+.empty__art { width: 240px; height: auto; aspect-ratio: 4 / 3; }
 .art-lines { stroke: var(--border-strong); stroke-width: 1; }
 .art-nodes circle { fill: var(--accent); filter: drop-shadow(0 0 4px var(--accent-glow)); }
 .art-wave path { stroke: var(--accent); stroke-width: 2; stroke-linecap: round; filter: drop-shadow(0 0 8px var(--accent-glow)); }

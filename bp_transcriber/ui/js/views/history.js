@@ -2,21 +2,14 @@
 
 import { api } from '../api.js';
 import * as store from '../state.js';
-import { el, html, fmtTime, fmtRelativeDate, plural, debounce } from '../util/format.js';
+import { el, fmtTime, fmtRelativeDate, plural, debounce } from '../util/format.js';
 import { icon } from '../util/icons.js';
 import { toast } from '../components/toast.js';
 import { confirm } from '../components/dialog.js';
 
 function emptyArt() {
-  return html(`
-    <svg class="empty__art" viewBox="0 0 200 120" aria-hidden="true">
-      <g fill="none" class="art-lines">
-        <circle cx="100" cy="60" r="44"/><circle cx="100" cy="60" r="28"/>
-        <path d="M20 60h36M144 60h36M100 16v16M100 88v16"/>
-        <path d="M72 60c4-10 7-10 11 0s7 10 11 0 7-10 11 0 7 10 11 0 7-10 11 0"/>
-      </g>
-      <g class="art-nodes"><circle cx="20" cy="60" r="3"/><circle cx="180" cy="60" r="3"/><circle cx="100" cy="16" r="3"/><circle cx="100" cy="104" r="3"/></g>
-    </svg>`);
+  // Звуковая волна, превращающаяся в строки текста (прозрачный PNG, читается на обеих темах)
+  return el('img', { class: 'empty__art', src: 'img/empty-state.png', alt: '', width: '800', height: '600' });
 }
 
 export function render(root) {
