@@ -3,12 +3,12 @@
 Полный план: `~/.claude/plans/elegant-strolling-phoenix.md`. Ветка: `feature/bp-desktop`.
 Базовая линия: 78 тестов зелёные (коммит b3f64e8).
 
-## Фаза 0. Гигиена репозитория — Haiku
-- [ ] pyproject: GigaAM pin 85558932, extras [app]/[diarization], согласованные torch/torchaudio
-- [ ] requirements/lock-macos-arm64.txt, lock-win-x64.txt (CPU index)
-- [ ] убрать sys.path-хак (transcriber.py:47-50), .gitignore `!packaging/*.spec`
-- [ ] LICENSE (MIT) + NOTICE
-- [ ] проверка: импорты + pytest
+## Фаза 0. Гигиена репозитория — Haiku ✅ (4af8fba: torch 2.11, win +cpu, 78 passed)
+- [x] pyproject: GigaAM pin 85558932, extras [app]/[diarization], согласованные torch/torchaudio
+- [x] requirements/lock-macos-arm64.txt, lock-win-x64.txt (CPU index)
+- [x] убрать sys.path-хак (transcriber.py:47-50), .gitignore `!packaging/*.spec`
+- [x] LICENSE (MIT) + NOTICE
+- [x] проверка: импорты + pytest
 
 ## Трек A. Ядро (Фазы 1–2) — Opus + Sonnet
 - [ ] device.py (cuda>mps>cpu, smoke-тест, фолбэк)
