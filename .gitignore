@@ -31,6 +31,7 @@ PIPFILE.lock
 # PyInstaller
 *.manifest
 *.spec
+!packaging/*.spec
 
 # Unit test / coverage reports
 htmlcov/
@@ -127,6 +128,10 @@ logs/
 *.swp
 temp/
 tmp/
+design/incoming/*.tmp
+
+# Vendor
+/vendor/
 
 # MyPy
 .mypy_cache/

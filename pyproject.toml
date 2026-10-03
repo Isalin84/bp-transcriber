@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gigaam-transcriber"
-version = "0.1.0"
+version = "1.0.0.dev0"
 description = "Микробиблиотека для транскрипции аудио/видео на базе GigaAM с диаризацией спикеров"
 readme = "README.md"
 license = {text = "MIT"}
@@ -35,24 +35,38 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
+# GigaAM itself is installed separately (see requirements/gigaam.txt) with --no-deps to avoid onnx/onnxruntime.
 dependencies = [
-    "torch>=2.0.0",
-    "torchaudio>=2.0.0",
-    "hydra-core>=1.3.0",
-    "omegaconf>=2.3.0",
-    "ffmpeg-python>=0.2.0",
-    "pydub>=0.25.0",
-    "numpy>=1.24.0",
-    "click>=8.0.0",
+    "torch==2.11.*",
+    "torchaudio==2.11.*",
+    "hydra-core==1.3.*",
+    "omegaconf==2.3.*",
+    "numpy>=2,<3",
+    "soundfile",
+    "sentencepiece",
     "tqdm>=4.65.0",
+    "click>=8.0.0",
     "huggingface_hub>=0.20.0",
+    "platformdirs>=4",
+    "silero-vad>=5.1",
+    "pydub>=0.25.0",
 ]
 
 [project.optional-dependencies]
 diarization = [
-    "pyannote.audio>=3.1.0",
+    "pyannote.audio==4.0.*",
     "speechbrain>=1.0.0",
     "scikit-learn>=1.3.0",
+]
+app = [
+    "pywebview>=6,<7",
+    "bottle>=0.13",
+    "keyring>=25",
+    "python-docx>=1.1",
+    "Pillow>=10",
+]
+build = [
+    "pyinstaller>=6.11",
 ]
 dev = [
     "pytest>=7.0.0",
@@ -62,7 +76,7 @@ dev = [
     "ruff>=0.1.0",
 ]
 all = [
-    "gigaam-transcriber[diarization,dev]",
+    "gigaam-transcriber[diarization,app,dev]",
 ]
 
 [project.scripts]
@@ -70,14 +84,13 @@ gigaam-transcribe = "gigaam_transcriber.cli:main"
 gigaam-batch = "gigaam_transcriber.cli:batch_main"
 
 [project.urls]
-# TODO: Replace with actual repository URLs
-Homepage = "https://github.com/yaruslove/DialogScribe"
-Documentation = "https://github.com/yaruslove/DialogScribe#readme"
-Repository = "https://github.com/yaruslove/DialogScribe"
+Homepage = "https://github.com/Isalin84/bp-transcriber"
+Repository = "https://github.com/Isalin84/bp-transcriber"
+Upstream = "https://github.com/yaruslove/DialogScribe"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["gigaam_transcriber*"]
+include = ["gigaam_transcriber*", "bp_transcriber*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.json"]

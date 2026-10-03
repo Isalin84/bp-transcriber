@@ -10,7 +10,6 @@
 import hashlib
 import logging
 import os
-import sys
 import tempfile
 import time
 import warnings
@@ -43,11 +42,6 @@ from .formatters import format_output, save_result
 from .segment_merger import MergeConfig, SegmentMerger, merge_segments
 
 logger = logging.getLogger(__name__)
-
-# Добавляем путь к GigaAM в PYTHONPATH
-GIGAAM_PATH = Path(__file__).parent.parent / "GigaAM"
-if str(GIGAAM_PATH) not in sys.path:
-    sys.path.insert(0, str(GIGAAM_PATH))
 
 
 class GigaAMTranscriber:

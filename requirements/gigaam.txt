@@ -1,0 +1,2 @@
+# Install with: pip install --no-deps -r requirements/gigaam.txt
+gigaam @ git+https://github.com/salute-developers/GigaAM.git@85558932f047bf80d03f2b2e9dc2584c26e8bda6
