@@ -102,6 +102,9 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--selftest-ui", action="store_true", help="открыть скрытое окно и проверить JS API")
     parser.add_argument("--fake", action="store_true", help="имитация пайплайна (разработка UI)")
     parser.add_argument("--debug", action="store_true", help="режим отладки, DevTools")
+    parser.add_argument("--transcribe", metavar="FILE", help="расшифровать файл без окна (проверка сборки), итог в JSON")
+    parser.add_argument("--diarization", default="auto", choices=["auto", "pyannote", "hybrid", "none"],
+                        help="режим разделения по спикерам для --transcribe")
     # PyInstaller/macOS могут добавить свои аргументы (например, -psn_…) — игнорируем их.
     args, _unknown = parser.parse_known_args(argv)
     return args
@@ -136,6 +139,11 @@ def main(argv: list[str] | None = None) -> int:
         from .selftest import run
 
         return run(_CONSOLE)
+
+    if args.transcribe:
+        from .selftest import run_transcribe
+
+        return run_transcribe(args.transcribe, args.diarization, _CONSOLE)
 
     from .app import run_app
 

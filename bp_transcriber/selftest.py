@@ -333,3 +333,46 @@ def run(stdout: TextIO | None) -> int:
         except (OSError, ValueError):
             pass
     return 0 if ok else 1
+
+
+def run_transcribe(path: str, diarization: str, stdout: TextIO | None) -> int:
+    """Расшифровать файл настоящим пайплайном без окна (проверка собранного приложения).
+
+    Токен HF берётся из настроек приложения (keyring), как при обычной работе.
+    В JSON попадают только сводка и первые реплики — токен никогда не выводится.
+    """
+    from gigaam_transcriber.pipeline import PipelineOptions, TranscriptionPipeline
+
+    from .settings import SettingsStore
+
+    settings = SettingsStore()
+    started = time.monotonic()
+    report: dict[str, Any] = {"file": path, "diarization": diarization}
+    pipeline = TranscriptionPipeline(device=settings.get().device, hf_token=settings.tokens.get())
+    try:
+        result = pipeline.run(path, PipelineOptions(diarization=diarization))
+        report.update(
+            ok=True,
+            duration=round(result.duration, 2),
+            wall_s=round(time.monotonic() - started, 2),
+            device=result.metadata.get("device"),
+            diarization_used=result.metadata.get("diarization"),
+            speakers=result.get_speakers(),
+            segments=len(result.segments),
+            words=sum(len(s.words or []) for s in result.segments),
+            sample=[f"[{s.start:.1f}] {s.speaker or '—'}: {s.text[:100]}" for s in result.segments[:5]],
+            warnings=result.metadata.get("warnings", []),
+        )
+    except Exception as exc:  # noqa: BLE001 — итог проверки должен попасть в отчёт
+        logger.exception("transcribe selftest failed")
+        report.update(ok=False, error=f"{type(exc).__name__}: {exc}")
+    finally:
+        pipeline.close()
+    text = json.dumps(report, ensure_ascii=False, indent=2, default=str)
+    logger.info("transcribe:\n%s", text)
+    if stdout is not None:
+        try:
+            print(text, file=stdout, flush=True)
+        except (OSError, ValueError):
+            pass
+    return 0 if report["ok"] else 1
