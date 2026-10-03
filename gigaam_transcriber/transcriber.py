@@ -425,9 +425,12 @@ class GigaAMTranscriber:
         """Транскрипция короткого аудио (< 25 сек)."""
         logger.debug(f"Транскрипция короткого аудио: {audio_path}")
         
-        text = self.model.transcribe(str(audio_path))
+        raw_result = self.model.transcribe(str(audio_path))
+        # Текущий GigaAM возвращает TranscriptionResult(text=..., words=...),
+        # старые версии возвращали строку напрямую.
+        text = raw_result.text if hasattr(raw_result, "text") else raw_result
         duration = self.audio_processor.get_duration(audio_path)
-        
+
         if not text or not text.strip():
             return []
         
@@ -442,7 +445,7 @@ class GigaAMTranscriber:
         logger.debug(f"Транскрипция длинного аудио: {audio_path}")
         
         try:
-            utterances = self.model.transcribe_longform(str(audio_path))
+            raw_result = self.model.transcribe_longform(str(audio_path))
         except Exception as e:
             logger.error(f"Ошибка transcribe_longform: {e}")
             raise AudioProcessingError(
@@ -450,12 +453,20 @@ class GigaAMTranscriber:
                 file_path=str(audio_path),
                 cause=e,
             )
-        
+
+        # Текущий GigaAM возвращает LongformTranscriptionResult(segments=[Segment(...)]),
+        # старые версии возвращали список словарей {"transcription": ..., "boundaries": ...}.
+        utterances = raw_result.segments if hasattr(raw_result, "segments") else raw_result
+
         segments = []
         for utt in utterances:
-            text = utt["transcription"]
-            start, end = utt["boundaries"]
-            
+            if isinstance(utt, dict):
+                text = utt["transcription"]
+                start, end = utt["boundaries"]
+            else:
+                text = utt.text
+                start, end = utt.start, utt.end
+
             if text and text.strip():
                 segments.append(TranscriptionSegment(
                     text=text.strip(),

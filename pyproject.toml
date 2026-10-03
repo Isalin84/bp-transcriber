@@ -10,7 +10,7 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
-    {name = "GigaAM Transcriber", email = ""}
+    {name = "GigaAM Transcriber"}
 ]
 keywords = [
     "transcription",
