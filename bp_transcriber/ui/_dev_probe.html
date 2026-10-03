@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BP Transcriber — dev probe</title>
+<style>
+  :root { color-scheme: dark light; }
+  body { margin: 0; padding: 24px; background: #0B1D3A; color: #E8EEF7;
+         font: 14px/1.5 -apple-system, "Segoe UI", Arial, sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  p { margin: 0 0 16px; color: #9FB3CC; }
+  pre { background: #10284D; padding: 12px; border-radius: 8px; overflow: auto; max-height: 45vh;
+        white-space: pre-wrap; word-break: break-word; }
+</style>
+</head>
+<body>
+<h1>BP Transcriber — dev probe</h1>
+<p>Заглушка бэкенда: настоящий UI появится в <code>ui/index.html</code>. Перетащите файл в окно, чтобы проверить drag&amp;drop.</p>
+<h2>get_state()</h2>
+<pre id="state">ожидание pywebviewready…</pre>
+<h2>События</h2>
+<pre id="events"></pre>
+<script>
+  window.bp = {
+    onEvent: function (event) {
+      var el = document.getElementById("events");
+      el.textContent = JSON.stringify(event) + "\n" + el.textContent.slice(0, 20000);
+    }
+  };
+  window.addEventListener("pywebviewready", function () {
+    window.pywebview.api.get_state().then(function (state) {
+      document.getElementById("state").textContent = JSON.stringify(state, null, 2);
+    }).catch(function (err) {
+      document.getElementById("state").textContent = "Ошибка: " + (err && err.message);
+    });
+  });
+</script>
+</body>
+</html>
