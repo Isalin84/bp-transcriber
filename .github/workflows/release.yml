@@ -82,7 +82,7 @@ jobs:
       # --- ffmpeg ---------------------------------------------------------------------------
       # Полный ffmpeg (с энкодерами) нужен только для тестов и для генерации фикстур check_formats.
       # В приложение попадает собственная минимальная LGPL-сборка из vendor/ffmpeg.
-      - uses: AnimMouse/setup-ffmpeg@v1
+      - uses: AnimMouse/setup-ffmpeg@178e0b4a408f06ce40d896c3cd79f50fa6f8b0c3  # v1.2.5
 
       - name: Кэш vendor/ffmpeg (macOS)
         if: runner.os == 'macOS'
@@ -296,7 +296,7 @@ jobs:
               .github/release-notes-template.md > release-notes.md
 
       - name: Создание черновика релиза
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
         with:
           draft: true
           name: BP Transcriber ${{ github.ref_name }}
