@@ -40,7 +40,7 @@
 ## Фаза 7. Windows + CI — Sonnet/Opus
 - [x] ci.yml, release.yml, Inno Setup, README — 43fbc1a (Windows-часть проверяется только в CI)
 - [x] публикация (разрешена пользователем после проверки): github.com/Isalin84/bp-transcriber, зеркало модели models-v1
-- [ ] release v1.0.0: дождаться CI, проверить артефакты, опубликовать черновик
+- [x] release v1.0.0 опубликован: DMG проверен (sha256, codesign, selftest, расшифровка из образа), Windows selftest в CI зелёный
 
 ## Ревью
 - A1 (ea87bd1): 167 passed; silero без onnxruntime; отмена VAD через callback.
