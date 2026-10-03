@@ -589,6 +589,7 @@ class GigaAMTranscriber:
         diarization: DiarizationMode = "none",
         n_workers: int = 1,
         progress_callback: Optional[Callable[[int, int, str], None]] = None,
+        output_format: OutputFormat = "txt",
         **kwargs,
     ) -> List[TranscriptionResult]:
         """
@@ -600,6 +601,8 @@ class GigaAMTranscriber:
             diarization: Режим диаризации
             n_workers: Количество параллельных воркеров
             progress_callback: Callback для прогресса: (current, total, filename)
+            output_format: Формат файлов результата ("txt", "json", "srt", "vtt"),
+                определяет и расширение выходного файла
             **kwargs: Дополнительные параметры
             
         Returns:
@@ -624,13 +627,14 @@ class GigaAMTranscriber:
             # Определение выходного пути
             output_path = None
             if output_dir:
-                output_path = output_dir / f"{input_path.stem}.txt"
+                output_path = output_dir / f"{input_path.stem}.{output_format}"
             
             try:
                 result = self.transcribe(
                     input_path,
                     output_path=output_path,
                     diarization=diarization,
+                    output_format=output_format,
                     **kwargs,
                 )
                 results.append(result)
@@ -701,7 +705,8 @@ class GigaAMTranscriber:
                     waveform = torch.from_numpy(process_chunk).unsqueeze(0).float()
                     torchaudio.save(str(temp_path), waveform, sample_rate)
                     
-                    text = self.model.transcribe(str(temp_path))
+                    result = self.model.transcribe(str(temp_path))
+                    text = getattr(result, "text", result)
                     
                     if text and text.strip():
                         segment_duration = len(process_chunk) / sample_rate
@@ -727,7 +732,8 @@ class GigaAMTranscriber:
                 waveform = torch.from_numpy(audio_data).unsqueeze(0).float()
                 torchaudio.save(str(temp_path), waveform, sample_rate)
                 
-                text = self.model.transcribe(str(temp_path))
+                result = self.model.transcribe(str(temp_path))
+                text = getattr(result, "text", result)
                 
                 if text and text.strip():
                     yield TranscriptionSegment(
