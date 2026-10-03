@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BP Transcriber</title>
+  <link rel="icon" href="img/logo-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script>
+    // window.bp must exist before the backend is ready: events that arrive before the
+    // ES modules load are queued here and drained by js/api.js.
+    window.bp = { _queue: [], onEvent: function (evt) { window.bp._queue.push(evt); } };
+    window.addEventListener('pywebviewready', function () { window.bp._ready = true; });
+    // Apply the saved theme before first paint to avoid a flash.
+    try {
+      var t = localStorage.getItem('bp.theme');
+      if (t === 'system' || !t) t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <div id="app" class="app" aria-busy="true">
+    <aside class="sidebar" aria-label="Навигация">
+      <div class="brand">
+        <img class="brand__mark" src="img/logo-mark.svg" alt="" width="36" height="36">
+        <div class="brand__text">
+          <div class="brand__name">BP Transcriber</div>
+          <div class="brand__sub">Транскрибатор русской речи</div>
+        </div>
+      </div>
+      <nav class="nav" id="nav">
+        <button class="nav__item is-active" data-view="transcribe" type="button">
+          <svg class="nav__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0v-5a3 3 0 0 0-3-3Z"/><path d="M5 9.5a5 5 0 0 0 10 0M10 14.5v3M7.5 17.5h5" fill="none"/></svg>
+          <span>Транскрибация</span>
+          <span class="nav__badge" id="nav-badge-jobs" hidden></span>
+        </button>
+        <button class="nav__item" data-view="history" type="button">
+          <svg class="nav__icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 10a6.5 6.5 0 1 0 1.9-4.6M3.5 3v3h3M10 6.5V10l2.5 1.5" fill="none"/></svg>
+          <span>История</span>
+        </button>
+        <button class="nav__item" data-view="settings" type="button">
+          <svg class="nav__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.6" fill="none"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4" fill="none"/></svg>
+          <span>Настройки</span>
+        </button>
+      </nav>
+      <div class="sidebar__spacer"></div>
+      <div class="sidebar__footer">
+        <a href="#" class="footer-link" data-url="https://bestpracticeai.ru">Создано с Best Practice AI<br><span>bestpracticeai.ru</span></a>
+      </div>
+    </aside>
+
+    <main class="main" id="view" tabindex="-1"></main>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite" aria-relevant="additions"></div>
+  <div id="overlays"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
