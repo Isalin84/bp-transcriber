@@ -34,10 +34,11 @@
 - [x] design/ASSETS_BRIEF_FOR_CHATGPT.md
 
 ## Фаза 6. Сборка macOS — Opus
-- [ ] PyInstaller spec, ffmpeg LGPL, --selftest, DMG
+- [x] PyInstaller spec, ffmpeg LGPL 7.1.3 (4.7 МБ), --selftest, DMG (146 МБ, .app 534 МБ) — 949cb5d
+- [ ] пересобрать и прогнать реальную расшифровку после A2
 
 ## Фаза 7. Windows + CI — Sonnet/Opus
-- [ ] ci.yml, release.yml, Inno Setup, README
+- [x] ci.yml, release.yml, Inno Setup, README — 43fbc1a (Windows-часть проверяется только в CI)
 - [ ] публикация — только после подтверждения пользователя
 
 ## Ревью
@@ -45,4 +46,6 @@
 - B1: 251 passed; свой threaded-сервер на 127.0.0.1:47815 (Range 206, ключ ?k=, защита от DNS rebinding); os._exit при выходе из-за зависающих потоков pywebview.
 - B2: 22 скриншота, Playwright без ошибок консоли; big-транскрипт 1520 сегментов — p95 кадра 9 мс.
 - Интеграция B1+B2: complete_onboarding, герметичный тест импорта токена (видел реальный .env), ui в package-data.
+- Ассеты ChatGPT встроены (b5ad5f0); иконку оставили векторную (чётче на 16–32 px).
+- P1: найдено torch.set_num_threads(1) при импорте silero_vad — передано A2 на исправление.
 - C (7ef71f9): иконка проверена визуально на 512/32 px.
