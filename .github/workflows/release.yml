@@ -1,0 +1,308 @@
+name: Release
+
+# Тег v* (или ручной запуск) -> сборка DMG (macOS arm64) и установщика (Windows x64).
+# Для тега дополнительно создаётся ЧЕРНОВИК релиза с обоими файлами и SHA256SUMS.txt:
+# публикует его человек, вручную, после проверки на реальных машинах.
+# При ручном запуске (workflow_dispatch) релиз не создаётся - установщики лежат в артефактах запуска.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  # md5 модели v3_e2e_rnnt из gigaam._MODEL_HASHES (пин GigaAM в requirements/gigaam.txt); меняется вместе с моделью.
+  GIGAAM_MODEL_KEY: gigaam-v3_e2e_rnnt-2730de7545ac43ad256485a462b0a27a
+
+jobs:
+  build:
+    name: Сборка (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            os: macos-14
+            lock: requirements/lock-macos-arm64.txt
+            extra_index: ""
+            artifact: installer-macos-arm64
+          - name: Windows x64
+            os: windows-2022
+            lock: requirements/lock-win-x64.txt
+            extra_index: https://download.pytorch.org/whl/cpu
+            artifact: installer-windows-x64
+    env:
+      EXTRA_INDEX: ${{ matrix.extra_index }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements/lock-*.txt
+            requirements/gigaam.txt
+
+      - name: Зависимости из lock-файла
+        shell: bash
+        run: |
+          if [ -n "$EXTRA_INDEX" ]; then export PIP_EXTRA_INDEX_URL="$EXTRA_INDEX"; fi
+          python -m pip install -r "${{ matrix.lock }}"
+          python -m pip install pytest
+          python -m pip install --no-deps -r requirements/gigaam.txt
+          python -m pip install --no-deps -e .
+
+      - name: Версия
+        id: ver
+        shell: bash
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          version="$(python -c "import bp_transcriber; print(bp_transcriber.__version__)")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Версия приложения: $version"
+          if [ "$REF_TYPE" = "tag" ] && [ "$REF_NAME" != "v$version" ]; then
+            echo "::error::Тег $REF_NAME не совпадает с bp_transcriber.__version__ ($version). Поднимите версию в bp_transcriber/__init__.py или пересоздайте тег."
+            exit 1
+          fi
+
+      # --- ffmpeg ---------------------------------------------------------------------------
+      # Полный ffmpeg (с энкодерами) нужен только для тестов и для генерации фикстур check_formats.
+      # В приложение попадает собственная минимальная LGPL-сборка из vendor/ffmpeg.
+      - uses: AnimMouse/setup-ffmpeg@v1
+
+      - name: Кэш vendor/ffmpeg (macOS)
+        if: runner.os == 'macOS'
+        id: ffmpeg-cache
+        uses: actions/cache@v6
+        with:
+          path: vendor/ffmpeg
+          key: ffmpeg-macos-arm64-${{ hashFiles('packaging/macos/build_ffmpeg.sh') }}
+
+      - name: Сборка статического LGPL ffmpeg (macOS)
+        if: runner.os == 'macOS' && steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash packaging/macos/build_ffmpeg.sh
+
+      - name: Скачивание LGPL ffmpeg (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./packaging/windows/fetch_ffmpeg.ps1
+
+      - name: Проверка vendor/ffmpeg
+        shell: bash
+        run: |
+          exe=vendor/ffmpeg/ffmpeg
+          [ "$RUNNER_OS" = "Windows" ] && exe=vendor/ffmpeg/ffmpeg.exe
+          test -f "$exe" || { echo "::error::нет $exe"; exit 1; }
+          "$exe" -hide_banner -version | head -n 1
+
+      - name: Форматы (декодирование встроенным ffmpeg)
+        shell: bash
+        run: python scripts/check_formats.py
+
+      # --- тесты ----------------------------------------------------------------------------
+      - name: Тесты
+        shell: bash
+        run: python -m pytest -q -m "not slow"
+
+      # --- модель GigaAM для frozen-selftest (необязательно) ------------------------------------
+      # Кэшируем в ~/.cache/gigaam: model_store.models_root() сам берёт этот каталог, если там лежит ckpt.
+      - name: Кэш модели GigaAM
+        id: model-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/gigaam
+          key: ${{ env.GIGAAM_MODEL_KEY }}
+
+      - name: Предзагрузка модели GigaAM
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        shell: bash
+        run: |
+          python - <<'PY'
+          import shutil
+          from pathlib import Path
+
+          from gigaam_transcriber.model_store import ensure_model
+
+          root = Path(ensure_model())
+          legacy = Path.home() / ".cache" / "gigaam"
+          if root.resolve() != legacy.resolve():
+              legacy.mkdir(parents=True, exist_ok=True)
+              for item in root.glob("v3_e2e_rnnt*"):
+                  shutil.copy2(item, legacy / item.name)
+          print("модель готова:", sorted(p.name for p in legacy.iterdir()))
+          PY
+
+      # --- сборка приложения ----------------------------------------------------------------
+      - name: Сборка приложения (PyInstaller)
+        shell: bash
+        run: python packaging/build_app.py --clean
+
+      - name: Selftest собранного приложения (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          export BP_HOME="$RUNNER_TEMP/bp-selftest-home"
+          mkdir -p "$BP_HOME"
+          set +e
+          "dist/BP Transcriber.app/Contents/MacOS/BP Transcriber" --selftest 2>&1 | tee selftest.log
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "--- selftest exit code: $code ---"
+          if [ -d "$BP_HOME/logs" ]; then cp -R "$BP_HOME/logs" selftest-logs; fi
+          exit "$code"
+
+      - name: Selftest собранного приложения (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Окно-приложение (GUI subsystem) может не иметь stdout - отчёт всегда дублируется в лог BP_HOME/logs.
+          $env:BP_HOME = Join-Path $env:RUNNER_TEMP 'bp-selftest-home'
+          New-Item -ItemType Directory -Force -Path $env:BP_HOME | Out-Null
+          $exe = Join-Path $PWD 'dist\BP Transcriber\BP Transcriber.exe'
+          $p = Start-Process -FilePath $exe -ArgumentList '--selftest' -Wait -PassThru -NoNewWindow `
+               -RedirectStandardOutput selftest.log -RedirectStandardError selftest.err.log
+          Get-Content selftest.log, selftest.err.log -ErrorAction SilentlyContinue
+          $logDir = Join-Path $env:BP_HOME 'logs'
+          if (Test-Path $logDir) {
+            Copy-Item $logDir selftest-logs -Recurse
+            Get-Content (Join-Path $logDir 'bp-transcriber.log') -Tail 120 -ErrorAction SilentlyContinue
+          }
+          Write-Host "--- selftest exit code: $($p.ExitCode) ---"
+          exit $p.ExitCode
+
+      - name: Лог selftest (артефакт при падении)
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: selftest-log-${{ matrix.artifact }}
+          path: |
+            selftest.log
+            selftest.err.log
+            selftest-logs/
+          if-no-files-found: ignore
+
+      # --- упаковка: macOS ---------------------------------------------------------------------
+      - name: DMG
+        if: runner.os == 'macOS'
+        shell: bash
+        run: bash packaging/macos/make_dmg.sh
+
+      # --- упаковка: Windows ------------------------------------------------------------------
+      - name: WebView2 bootstrapper
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dir = 'packaging/windows/redist'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $file = Join-Path $dir 'MicrosoftEdgeWebview2Setup.exe'
+          Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $file -MaximumRedirection 5
+          $sig = Get-AuthenticodeSignature $file
+          if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'Microsoft') {
+            throw "Подпись WebView2 bootstrapper недействительна: $($sig.Status) / $($sig.SignerCertificate.Subject)"
+          }
+          if ((Get-Item $file).Length -lt 500KB) { throw 'WebView2 bootstrapper подозрительно мал' }
+          Write-Host "WebView2 bootstrapper: $([math]::Round((Get-Item $file).Length / 1KB)) КБ, подпись: $($sig.SignerCertificate.Subject)"
+
+      - name: Установщик (Inno Setup)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          APP_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          # Inno Setup 6 предустановлен на windows-2022 (см. runner-images); иначе ставим через choco.
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'choco install innosetup не удался' }
+          }
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe не найден: $iscc" }
+          # Необязательные картинки мастера: BMP из design/incoming (если лежат) -> /DWizardImage=..., /DWizardSmallImage=...
+          $defs = @(python packaging/windows/prepare_wizard_images.py)
+          if ($LASTEXITCODE -ne 0) { throw 'prepare_wizard_images.py завершился с ошибкой' }
+          & $iscc "/DAppVersion=$env:APP_VERSION" @defs packaging\windows\bp_transcriber.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC завершился с кодом $LASTEXITCODE" }
+          $setup = "dist\BP-Transcriber-$env:APP_VERSION-windows-x64-setup.exe"
+          if (-not (Test-Path $setup)) { throw "Установщик не создан: $setup" }
+          Write-Host "Готово: $setup ($([math]::Round((Get-Item $setup).Length / 1MB, 1)) МБ)"
+
+      # --- артефакты ----------------------------------------------------------------------------
+      - name: Контрольные суммы
+        shell: bash
+        run: |
+          shopt -s nullglob
+          for f in dist/BP-Transcriber-*.dmg dist/BP-Transcriber-*-setup.exe; do
+            echo "== $f"
+            if command -v sha256sum >/dev/null; then sha256sum "$f"; else shasum -a 256 "$f"; fi
+          done
+
+      - name: Загрузка артефакта
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            dist/BP-Transcriber-*.dmg
+            dist/BP-Transcriber-*-setup.exe
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  release:
+    name: Черновик релиза
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: installer-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: SHA256SUMS и текст релиза
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          ls -lh artifacts
+          dmg=(artifacts/BP-Transcriber-*-macos-arm64.dmg)
+          exe=(artifacts/BP-Transcriber-*-windows-x64-setup.exe)
+          [ -f "${dmg[0]}" ] || { echo "::error::нет DMG"; exit 1; }
+          [ -f "${exe[0]}" ] || { echo "::error::нет установщика Windows"; exit 1; }
+          (cd artifacts && sha256sum BP-Transcriber-* > ../SHA256SUMS.txt)
+          cat SHA256SUMS.txt
+          version="${TAG#v}"
+          sed -e "s/{{VERSION}}/${version}/g" -e "s/{{TAG}}/${TAG}/g" \
+              .github/release-notes-template.md > release-notes.md
+
+      - name: Создание черновика релиза
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          name: BP Transcriber ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body_path: release-notes.md
+          files: |
+            artifacts/BP-Transcriber-*
+            SHA256SUMS.txt
+          fail_on_unmatched_files: true

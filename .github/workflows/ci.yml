@@ -1,0 +1,81 @@
+name: CI
+
+# Быстрая проверка: зависимости из lock-файлов + быстрые тесты на тех платформах,
+# для которых мы выпускаем приложение (macOS Apple Silicon и Windows x64).
+#
+# Ubuntu намеренно не в матрице: lock-файлов под Linux нет, а по умолчанию PyTorch для Linux
+# тянет CUDA-колёса на несколько ГБ. Ядро (gigaam_transcriber) платформенно-независимо,
+# а всё платформенно-зависимое (pywebview, ffmpeg, пути, сборка) проверяется на целевых ОС.
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["v*"]   # теги собирает release.yml
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Тесты (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            os: macos-14
+            lock: requirements/lock-macos-arm64.txt
+            extra_index: ""
+          - name: Windows x64
+            os: windows-2022
+            lock: requirements/lock-win-x64.txt
+            # torch==2.11.0+cpu (локальная версия +cpu) лежит только на индексе PyTorch
+            extra_index: https://download.pytorch.org/whl/cpu
+    env:
+      PYTHONUTF8: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      EXTRA_INDEX: ${{ matrix.extra_index }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements/lock-*.txt
+            requirements/gigaam.txt
+
+      - name: Зависимости из lock-файла
+        shell: bash
+        run: |
+          if [ -n "$EXTRA_INDEX" ]; then export PIP_EXTRA_INDEX_URL="$EXTRA_INDEX"; fi
+          python -m pip install -r "${{ matrix.lock }}"
+          python -m pip install pytest
+          python -m pip install --no-deps -r requirements/gigaam.txt
+          python -m pip install --no-deps -e .
+
+      # Полный ffmpeg с энкодерами: часть тестов сама генерирует фикстуры.
+      - uses: AnimMouse/setup-ffmpeg@v1
+
+      - name: Версии
+        shell: bash
+        run: |
+          python --version
+          ffmpeg -version | head -n 1
+          python -c "import bp_transcriber, torch; print('bp_transcriber', bp_transcriber.__version__, '| torch', torch.__version__)"
+
+      - name: Тесты
+        shell: bash
+        run: python -m pytest -q -m "not slow"
+
+      - name: Форматы ffmpeg (проверка скрипта на системном ffmpeg)
+        shell: bash
+        run: python scripts/check_formats.py

@@ -1,377 +1,228 @@
-# DialogScribe
+<p align="center">
+  <img src="docs/screenshots/transcribe-dark.png" alt="BP Transcriber: главный экран" width="860">
+</p>
 
-[DialogScribe](https://github.com/yaruslove/DialogScribe.git)  
-based on GigaAm App wrapper
+<h1 align="center">BP Transcriber</h1>
 
-Микробиблиотека для транскрипции аудио и видео файлов на базе [GigaAM](https://github.com/salute-developers/GigaAM) с опциональной диаризацией спикеров через pyannote.
+<p align="center">
+  Бесплатное настольное приложение для расшифровки русской речи в текст с разделением по спикерам.<br>
+  Работает на вашем компьютере: файлы никуда не отправляются.
+</p>
+
+<p align="center">
+  <a href="https://github.com/Isalin84/bp-transcriber/releases/latest"><img alt="Последний релиз" src="https://img.shields.io/github/v/release/Isalin84/bp-transcriber?include_prereleases&label=%D1%80%D0%B5%D0%BB%D0%B8%D0%B7&color=D4AF37"></a>
+  <a href="LICENSE"><img alt="Лицензия MIT" src="https://img.shields.io/badge/%D0%BB%D0%B8%D1%86%D0%B5%D0%BD%D0%B7%D0%B8%D1%8F-MIT-1E3A5F"></a>
+  <img alt="Платформы: macOS Apple Silicon и Windows x64" src="https://img.shields.io/badge/%D0%BF%D0%BB%D0%B0%D1%82%D1%84%D0%BE%D1%80%D0%BC%D1%8B-macOS%20arm64%20%C2%B7%20Windows%20x64-0B1D3A">
+</p>
+
+BP Transcriber превращает записи встреч, интервью и звонков в текст с пунктуацией и таймкодами. Внутри распознавание речи [GigaAM](https://github.com/salute-developers/GigaAM) v3 от SaluteDevices и необязательное разделение по спикерам на базе [pyannote](https://github.com/pyannote/pyannote-audio).
 
 ## Возможности
 
-- **Транскрипция аудио и видео** любой длительности
-- **Диаризация спикеров** через pyannote или гибридный подход
-- **Множество форматов вывода**: TXT, JSON, SRT, VTT
-- **Пакетная обработка** нескольких файлов
-- **CLI интерфейс** для командной строки
-- **Простой Python API** для интеграции в приложения
+- **GigaAM v3 с пунктуацией и нормализацией**: готовый текст с запятыми, точками и числами цифрами.
+- **Офлайн**: после скачивания модели (один раз, около 450 МБ) интернет не нужен.
+- **Разделение по спикерам**: режим pyannote (точный, нужен бесплатный токен Hugging Face) и гибридный режим без токена.
+- **Таймкоды по словам**: у каждого слова есть время начала и конца.
+- **Редактор с проигрывателем**: нажмите на время реплики, чтобы услышать это место; текущее слово подсвечивается при воспроизведении, текст правится двойным щелчком, спикеров можно переименовать.
+- **Экспорт**: TXT, Markdown, DOCX, SRT, VTT, JSON.
+- **История и очередь**: можно добавить сразу много файлов; готовые расшифровки сохраняются и доступны позже.
+- **Любые форматы**: аудио и видео (MP3, M4A, WAV, FLAC, OGG, OPUS, MP4, MOV, MKV, WEBM и другие), FFmpeg уже внутри.
+- **Ускорение на Apple GPU** (Metal) на Mac с чипами M1 и новее.
+- **Бесплатно и с открытым кодом** (MIT).
+
+## Скриншоты
+
+<table>
+  <tr>
+    <td align="center"><b>Тёмная тема</b></td>
+    <td align="center"><b>Светлая тема</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/transcribe-dark.png" alt="Главный экран, тёмная тема"></td>
+    <td><img src="docs/screenshots/transcribe-light.png" alt="Главный экран, светлая тема"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/transcript-dark.png" alt="Редактор расшифровки, тёмная тема"></td>
+    <td><img src="docs/screenshots/transcript-light.png" alt="Редактор расшифровки, светлая тема"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/history-dark.png" alt="История, тёмная тема"></td>
+    <td><img src="docs/screenshots/history-light.png" alt="История, светлая тема"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/settings-dark.png" alt="Настройки, тёмная тема"></td>
+    <td><img src="docs/screenshots/settings-light.png" alt="Настройки, светлая тема"></td>
+  </tr>
+</table>
 
 ## Установка
 
-### Требования
+Готовые установщики лежат на странице [Releases](https://github.com/Isalin84/bp-transcriber/releases/latest). Рядом с ними есть файл `SHA256SUMS.txt` для проверки загрузки.
 
-- Python ≥ 3.10
-- [FFmpeg](https://ffmpeg.org/) установлен и доступен в PATH
-- CUDA (опционально, для ускорения на GPU)
+Приложение пока не подписано сертификатами Apple и Microsoft (это платные программы для разработчиков), поэтому при первом запуске система покажет предупреждение. Это ожидаемо, ниже написано, что нажимать.
 
-### Установка пакета
+### macOS
 
-```bash
-# 1. Клонировать репозиторий
-git clone https://github.com/yaruslove/DialogScribe.git
-cd https://github.com/yaruslove/DialogScribe
+1. Скачайте `BP-Transcriber-<версия>-macos-arm64.dmg`, откройте его и перетащите **BP Transcriber** в папку «Программы».
+2. Первый запуск:
+   - **macOS 12 до 14:** в «Программах» нажмите на приложение правой кнопкой (или Control и клик), выберите «Открыть», затем ещё раз «Открыть» в окне предупреждения.
+   - **macOS 15 и новее:** запустите приложение; когда система откажет, откройте «Системные настройки → Конфиденциальность и безопасность», прокрутите вниз до сообщения о BP Transcriber и нажмите «Всё равно открыть». Подтвердите паролем.
+3. Если приложение пишет, что «повреждено» или не открывается, снимите карантин командой в Терминале:
 
+   ```bash
+   xattr -dr com.apple.quarantine "/Applications/BP Transcriber.app"
+   ```
 
-# 2. Установить GigaAM
-git clone https://github.com/salute-developers/GigaAM.git
-pip install -e ./GigaAM
+Выбор запоминается: в следующий раз приложение откроется как обычное.
 
-# 3. Установить зависимости
-pip install -r requirements.txt
+### Windows
 
-# 4. (Опционально) Установить зависимости для диаризации
-pip install -r requirements-diarization.txt
+1. Скачайте `BP-Transcriber-<версия>-windows-x64-setup.exe` и запустите его. Права администратора не нужны: по умолчанию приложение ставится в профиль пользователя (`%LOCALAPPDATA%\Programs\BP Transcriber`). Для установки на всех пользователей можно выбрать соответствующий вариант в начале мастера.
+2. Windows SmartScreen может показать «Windows защитила ваш компьютер». Нажмите **Подробнее**, затем **Выполнить в любом случае**.
+3. Для окна приложения нужен Microsoft Edge WebView2 Runtime. На Windows 11 и в обновлённых Windows 10 он уже есть, иначе установщик поставит его сам (загрузчик WebView2 уже вшит в установщик).
+4. Запустите BP Transcriber из меню «Пуск».
 
-# 5. Установить пакет
-pip install -e .
+**Удаление:** «Параметры → Приложения» (на Mac достаточно перетащить приложение в корзину). Ваши данные при этом не удаляются: настройки, история и модели остаются на диске (пути в разделе ниже). Если они больше не нужны, удалите эти папки вручную.
+
+## Первый запуск
+
+При первом запуске приложение предложит скачать модель GigaAM v3 (около 450 МБ). Загрузка идёт один раз, её можно прервать и продолжить позже. Дальше распознавание работает без интернета.
+
+Где что хранится:
+
+| Что | macOS | Windows |
+|---|---|---|
+| Модель GigaAM | `~/Library/Caches/BP Transcriber/gigaam` (или `~/.cache/gigaam`, если модель уже лежала там) | `%LOCALAPPDATA%\BestPractice\BP Transcriber\Cache\gigaam` |
+| Модели pyannote (если включено разделение по спикерам) | `~/.cache/huggingface` | `%USERPROFILE%\.cache\huggingface` |
+| Настройки и история | `~/Library/Application Support/BP Transcriber` | `%LOCALAPPDATA%\BestPractice\BP Transcriber` |
+| Журналы (для сообщений об ошибках) | `~/Library/Logs/BP Transcriber` | `%LOCALAPPDATA%\BestPractice\BP Transcriber\Logs` |
+| Токен Hugging Face | Связка ключей macOS | Диспетчер учётных данных Windows |
+
+Полностью очистить следы приложения на Windows можно так (PowerShell):
+
+```powershell
+Remove-Item -Recurse -Force "$env:LOCALAPPDATA\BestPractice\BP Transcriber"
 ```
 
-## Setup VENV
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-или venv\Scripts\activate  # Windows
+## Разделение по спикерам
 
-### Настройка для диаризации
+Режим pyannote определяет, кто и когда говорил, и подписывает реплики («Спикер 1», «Спикер 2»). Модели pyannote закрыты условиями использования на Hugging Face, поэтому для их скачивания нужен личный токен. Токен бесплатный и нужен один раз.
 
-Для использования диаризации спикеров необходим HuggingFace токен и доступ к моделям:
-
-1. **Создайте токен на [HuggingFace](https://huggingface.co/settings/tokens)**
-   - Нажмите "New token"
-   - Выберите права "Read"
-   - Скопируйте токен
-
-2. **Примите условия использования моделей:**
-   - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0) - нажмите "Agree and access repository"
-   - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) - нажмите "Agree and access repository"
-   - [pyannote/speaker-diarization](https://huggingface.co/pyannote/speaker-diarization) - нажмите "Agree and access repository" (опционально, fallback)
+1. Создайте бесплатный аккаунт на [huggingface.co](https://huggingface.co/join).
+2. Откройте [Settings → Access Tokens](https://huggingface.co/settings/tokens), создайте токен типа **Read** и скопируйте его.
+3. Примите условия на двух страницах, нажав «Agree and access repository»:
    - [pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1)
+   - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
 
+Затем вставьте токен в «Настройки» приложения; там же есть кнопка проверки, она подскажет, на какой странице не приняты условия. Токен хранится в системном хранилище паролей и никуда, кроме Hugging Face, не отправляется.
 
-3. **Установите переменную окружения:**
+**Без токена** доступен гибридный режим: детектор речи, голосовые эмбеддинги и кластеризация. Он работает полностью локально и ничего не требует, но различает спикеров менее точно.
+
+## Системные требования
+
+| | |
+|---|---|
+| macOS | 12 Monterey или новее, процессор Apple Silicon (M1 и новее); Intel Mac не поддерживается |
+| Windows | 10 или 11, 64-разрядная; расчёты идут на процессоре |
+| Память | 8 ГБ минимум, 16 ГБ рекомендуется (особенно для длинных записей и разделения по спикерам) |
+| Диск | около 2 ГБ: приложение, модель GigaAM, модели pyannote |
+
+## Для разработчиков
+
+Нужен Python 3.12 и FFmpeg в `PATH`. Зависимости зафиксированы в lock-файлах; GigaAM ставится отдельно и без своих зависимостей (чтобы не тянуть onnx).
 
 ```bash
-# Способ 1: экспорт в консоли
-export HF_TOKEN=your_actual_token_here
+python3.12 -m venv .venv
+source .venv/bin/activate             # Windows: .venv\Scripts\activate
 
-# Способ 2: создать .env файл
-cp .env.example .env
-# Затем отредактировать .env и вставить ваш токен
+# macOS (Apple Silicon)
+pip install -r requirements/lock-macos-arm64.txt
+# Windows (CPU-сборка PyTorch лежит на отдельном индексе)
+# pip install -r requirements/lock-win-x64.txt --extra-index-url https://download.pytorch.org/whl/cpu
+
+pip install --no-deps -r requirements/gigaam.txt
+pip install --no-deps -e .
+pip install pytest
 ```
 
-4. **Проверьте настройку:**
+Запуск:
 
 ```bash
-python setup_diarization.py
+python -m bp_transcriber            # приложение
+python -m bp_transcriber --fake     # имитация распознавания, удобно для разработки интерфейса
+python -m bp_transcriber --selftest # проверка зависимостей без окна
 ```
 
-Этот скрипт проверит доступ к моделям и поможет настроить диаризацию.
+Тесты (быстрые, без модели и без окна):
 
-## Быстрый старт
+```bash
+python -m pytest -q -m "not slow"
+```
 
-### Python API
+Сборка установщиков (PyInstaller, DMG, Inno Setup) описана в [packaging/README.md](packaging/README.md). Сборку на GitHub Actions запускает тег `v*` (см. `.github/workflows/release.yml`): он собирает оба установщика и создаёт черновик релиза.
+
+### Python API и CLI
+
+Ядро доступно и без интерфейса, как библиотека и как консольные команды (`gigaam-transcribe`, `gigaam-batch`).
 
 ```python
 from gigaam_transcriber import GigaAMTranscriber
 
-# Создание транскрибера
-transcriber = GigaAMTranscriber()
+with GigaAMTranscriber() as transcriber:       # model_name="v3_e2e_rnnt", device="auto"
+    result = transcriber.transcribe(
+        "meeting.mp4",
+        diarization="pyannote",                # "none" | "pyannote" | "hybrid"
+        num_speakers=3,                        # необязательно
+    )
 
-# Простая транскрипция
-result = transcriber.transcribe("audio.wav")
 print(result.text)
-
-# С диаризацией спикеров
-result = transcriber.transcribe(
-    "meeting.mp4",
-    diarization="pyannote",
-    num_speakers=3
-)
-
-# Вывод по сегментам
 for seg in result.segments:
     print(f"[{seg.start:.1f}-{seg.end:.1f}] {seg.speaker}: {seg.text}")
 
-# Сохранение в файл
-result.save("transcript.json", format="json")
+result.save("transcript.json", format="json")  # также txt, srt, vtt
 result.save("subtitles.srt")
 ```
 
-### CLI
+Токен для `pyannote` берётся из аргумента `hf_token` или переменной окружения `HF_TOKEN`.
 
 ```bash
-# Простая транскрипция
-gigaam-transcribe audio.wav
-
-# С диаризацией
+gigaam-transcribe audio.wav                                    # простая расшифровка
 gigaam-transcribe meeting.mp4 -d pyannote --speakers 3 -o meeting.txt
-
-# Вывод в JSON
 gigaam-transcribe interview.mp3 -d pyannote -f json -o interview.json
-
-# Субтитры SRT
 gigaam-transcribe video.mp4 -f srt -o subtitles.srt
-
-# Пакетная обработка
-gigaam-batch *.mp3 -o transcripts/ -d pyannote
+gigaam-batch *.mp3 -o transcripts/ -d pyannote                 # пакетная обработка
 ```
 
-## API Reference
+Модели GigaAM: `v3_e2e_rnnt` (по умолчанию, с пунктуацией), `v3_e2e_ctc`, а также `v3_rnnt` и `v3_ctc` без пунктуации. Режимы разделения по спикерам: `none`, `pyannote`, `hybrid`. Форматы вывода: `txt`, `json`, `srt`, `vtt`.
 
-### GigaAMTranscriber
+Схема JSON:
 
-Основной класс для транскрипции.
-
-```python
-from gigaam_transcriber import GigaAMTranscriber
-
-transcriber = GigaAMTranscriber(
-    model_name="v3_e2e_rnnt",  # Модель GigaAM
-    device="auto",             # "auto", "cuda", "cpu"
-    hf_token=None,            # HuggingFace токен (или из HF_TOKEN)
-    verbose=False             # Подробный вывод
-)
-```
-
-#### Методы
-
-##### transcribe()
-
-```python
-result = transcriber.transcribe(
-    input_path,                    # Путь к файлу
-    output_path=None,              # Путь для сохранения
-    diarization="none",            # "none", "pyannote", "hybrid"
-    num_speakers=None,             # Количество спикеров
-    output_format="txt",           # "txt", "json", "srt", "vtt"
-    merge_same_speaker=True,       # Объединять сегменты одного спикера
-    min_segment_gap=0.5           # Gap для объединения (сек)
-)
-```
-
-##### audio2text() / video2text()
-
-```python
-# Транскрипция аудио
-result = transcriber.audio2text("audio.wav", diarization="pyannote")
-
-# Транскрипция видео
-result = transcriber.video2text("video.mp4", diarization="pyannote")
-```
-
-##### transcribe_batch()
-
-```python
-results = transcriber.transcribe_batch(
-    ["file1.mp3", "file2.mp4"],
-    output_dir="transcripts/",
-    diarization="pyannote"
-)
-```
-
-### TranscriptionResult
-
-Результат транскрипции.
-
-```python
-result.text         # Полный текст
-result.segments     # Список сегментов
-result.duration     # Длительность (сек)
-result.language     # Язык
-result.model_name   # Модель
-
-# Форматирование
-result.to_txt()     # Текст с таймкодами
-result.to_json()    # JSON
-result.to_srt()     # Субтитры SRT
-result.to_vtt()     # Субтитры VTT
-
-# Сохранение
-result.save("output.txt")
-result.save("output.json", format="json")
-
-# Утилиты
-result.get_speakers()              # Список спикеров
-result.filter_by_speaker("Спикер №1")  # Фильтрация
-```
-
-### TranscriptionSegment
-
-Сегмент транскрипции.
-
-```python
-segment.text       # Текст сегмента
-segment.start      # Начало (сек)
-segment.end        # Конец (сек)
-segment.speaker    # Спикер
-segment.duration   # Длительность
-```
-
-## Модели GigaAM
-
-| Модель | Описание | Рекомендация |
-|--------|----------|--------------|
-| `v3_e2e_rnnt` | С пунктуацией и нормализацией (RNNT) | **Рекомендуется** |
-| `v3_e2e_ctc` | С пунктуацией и нормализацией (CTC) | Альтернатива |
-| `v3_rnnt` | Без пунктуации (RNNT) | - |
-| `v3_ctc` | Без пунктуации (CTC) | - |
-
-## Форматы вывода
-
-### TXT (с диаризацией)
-```
-[00:00:00 - 00:17:41] Спикер №1: текст...
-[00:18:98 - 00:39:26] Спикер №2: текст...
-```
-
-### JSON
 ```json
 {
-  "metadata": {
-    "source": "meeting.mp4",
-    "duration": 3600.5,
-    "speakers_count": 3
-  },
-  "segments": [...],
+  "metadata": {"source": "meeting.mp4", "duration": 3600.5, "speakers_count": 3},
+  "segments": [{"start": 0.0, "end": 17.41, "speaker": "Спикер №1", "text": "..."}],
   "full_text": "..."
 }
 ```
 
-### SRT
-```
-1
-00:00:00,000 --> 00:00:17,410
-[Спикер №1] текст...
-```
+## Лицензии и благодарности
 
-### VTT
-```
-WEBVTT
+BP Transcriber распространяется под лицензией [MIT](LICENSE). Он стоит на плечах чужих проектов:
 
-00:00:00.000 --> 00:00:17.410
-[Спикер №1] текст...
-```
+- [GigaAM](https://github.com/salute-developers/GigaAM) от SaluteDevices (MIT): модель распознавания речи.
+- [DialogScribe](https://github.com/yaruslove/DialogScribe) от yaruslove: исходная база ядра транскрибации, из которой вырос проект.
+- [pyannote.audio](https://github.com/pyannote/pyannote-audio) (MIT) и модели `speaker-diarization-community-1` (CC-BY-4.0) и `segmentation-3.0` (MIT): разделение по спикерам.
+- [Silero VAD](https://github.com/snakers4/silero-vad) (MIT): поиск речи в записи.
+- [FFmpeg](https://ffmpeg.org) (LGPL-2.1+): сборка без GPL-компонентов; исходный код доступен на ffmpeg.org.
+- PyTorch, SpeechBrain, pywebview, Bottle и другие: см. [NOTICE.md](NOTICE.md).
+- Шрифты Montserrat и Inter распространяются по лицензии SIL OFL 1.1.
 
-## Режимы диаризации
+Полный список и тексты лицензий: [NOTICE.md](NOTICE.md).
 
-- **none** — без диаризации, только транскрипция
-- **pyannote** — полная диаризация через pyannote/speaker-diarization-3.1
-- **hybrid** — гибридный подход: VAD + эмбеддинги + кластеризация (легче, но менее точно)
+## English summary
 
-## Примеры
+**BP Transcriber** is a free, open-source desktop app (macOS Apple Silicon, Windows 10/11 x64) for offline Russian speech-to-text. It runs [GigaAM](https://github.com/salute-developers/GigaAM) v3 with punctuation, optional speaker diarization (pyannote with a free Hugging Face token, or a token-free hybrid mode), word-level timing, an editor with synchronized playback, and export to TXT, MD, DOCX, SRT, VTT and JSON. Download installers from [Releases](https://github.com/Isalin84/bp-transcriber/releases/latest); the builds are unsigned, so macOS Gatekeeper and Windows SmartScreen will warn on first launch (see the installation steps above). The first launch downloads a ~450 MB model, after that no internet is needed. The core is also usable as a Python library and CLI (`gigaam-transcribe`); see the developer section. MIT licensed.
 
-### Транскрипция совещания
+---
 
-```python
-from gigaam_transcriber import GigaAMTranscriber
-
-with GigaAMTranscriber() as transcriber:
-    result = transcriber.transcribe(
-        "meeting.mp4",
-        diarization="pyannote",
-        num_speakers=4,
-        output_format="json"
-    )
-    
-    # Статистика по спикерам
-    for speaker in result.get_speakers():
-        filtered = result.filter_by_speaker(speaker)
-        duration = sum(s.duration for s in filtered.segments)
-        print(f"{speaker}: {duration:.0f} сек")
-    
-    result.save("meeting_transcript.json")
-```
-
-### Создание субтитров для видео
-
-```python
-from gigaam_transcriber import GigaAMTranscriber
-
-transcriber = GigaAMTranscriber()
-result = transcriber.transcribe("video.mp4")
-
-# SRT субтитры
-result.save("subtitles.srt")
-
-# WebVTT субтитры
-result.save("subtitles.vtt")
-```
-
-### Пакетная обработка
-
-```python
-from gigaam_transcriber import GigaAMTranscriber
-from pathlib import Path
-
-transcriber = GigaAMTranscriber()
-
-audio_files = list(Path("recordings").glob("*.mp3"))
-
-def progress(current, total, filename):
-    print(f"Processing {current}/{total}: {filename}")
-
-results = transcriber.transcribe_batch(
-    audio_files,
-    output_dir="transcripts",
-    diarization="pyannote",
-    progress_callback=progress
-)
-
-print(f"Processed {len(results)} files")
-```
-
-## Структура проекта
-
-```
-gigaam_transcriber/
-├── __init__.py           # Публичный API
-├── transcriber.py        # Основной класс GigaAMTranscriber
-├── audio_processor.py    # Обработка аудио/видео
-├── diarization.py        # Диаризация спикеров
-├── segment_merger.py     # Сшивка сегментов
-├── formatters.py         # Форматирование вывода
-├── data_models.py        # Структуры данных
-├── exceptions.py         # Исключения
-├── utils.py              # Утилиты
-└── cli.py                # CLI интерфейс
-```
-
-## Тестирование
-
-```bash
-# Запуск всех тестов
-pytest tests/ -v
-
-# Тесты без модели (быстрые)
-pytest tests/ -v -m "not requires_model"
-
-# Тесты с моделью (требуют GPU)
-pytest tests/ -v -m requires_model
-```
-
-## Лицензия
-
-MIT License
-
-## Ссылки
-
-- [GigaAM GitHub](https://github.com/salute-developers/GigaAM)
-- [GigaAM paper (arXiv)](https://arxiv.org/abs/2506.01192)
-- [pyannote speaker-diarization](https://huggingface.co/pyannote/speaker-diarization-3.1)
+<p align="center">Создано с Best Practice AI · <a href="https://bestpracticeai.ru">bestpracticeai.ru</a></p>
