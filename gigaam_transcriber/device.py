@@ -6,9 +6,12 @@ torch импортируется лениво, чтобы быстро запу�
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
-from typing import TYPE_CHECKING, Any
+import platform
+import sys
+from typing import TYPE_CHECKING, Any, Iterator
 
 if TYPE_CHECKING:
     import torch
@@ -87,3 +90,50 @@ def available_options() -> list[dict[str, Any]]:
         {"id": "cpu", "label": "CPU", "available": True},
         {"id": "gpu", "label": gpu_label, "available": kind is not None},
     ]
+
+
+_ASR_THREADS_ENV = "BP_ASR_THREADS"
+
+
+def asr_cpu_threads() -> int | None:
+    """
+    Число потоков torch для GigaAM на CPU (None — не менять).
+
+    На Apple Silicon (torch 2.11) энкодер GigaAM быстрее в один поток:
+    замер M4 Max, 10.7 мин речи — 1 поток 9.2 с, 4 — 12.2 с, 10 — 15.0 с.
+    На других платформах оставляем значение torch. Переопределение: BP_ASR_THREADS.
+    """
+    raw = os.environ.get(_ASR_THREADS_ENV)
+    if raw:
+        try:
+            value = int(raw)
+        except ValueError:
+            logger.warning("Некорректное значение %s=%r", _ASR_THREADS_ENV, raw)
+        else:
+            if value > 0:
+                return value
+    if sys.platform == "darwin" and platform.machine() == "arm64":
+        return 1
+    return None
+
+
+@contextlib.contextmanager
+def torch_threads(count: int | None) -> Iterator[None]:
+    """
+    Временно задать число потоков torch (настройка общая для процесса).
+
+    Вызывать только из рабочего потока, который сейчас один считает модели.
+    """
+    if not count:
+        yield
+        return
+    torch = _import_torch()
+    previous = torch.get_num_threads()
+    if previous == count:
+        yield
+        return
+    torch.set_num_threads(count)
+    try:
+        yield
+    finally:
+        torch.set_num_threads(previous)

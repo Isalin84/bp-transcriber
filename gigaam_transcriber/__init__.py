@@ -32,8 +32,9 @@ GigaAM Transcriber - микробиблиотека для транскрипц�
 
 Режимы диаризации:
 - "none" - без диаризации
-- "pyannote" - полная диаризация через pyannote/speaker-diarization-3.1
-- "hybrid" - легковесный подход: VAD + эмбеддинги + кластеризация
+- "auto" - pyannote, если есть токен или модели в кэше, иначе hybrid
+- "pyannote" - полная диаризация через pyannote/speaker-diarization-community-1 (или 3.1)
+- "hybrid" - без токена: VAD + эмбеддинги + кластеризация
 
 Форматы вывода:
 - "txt" - текстовый формат с временными метками
@@ -75,7 +76,15 @@ from .exceptions import (
 
 # Вспомогательные модули
 from .audio_processor import AudioProcessor
-from .diarization import DiarizationManager
+from .diarization import (
+    HybridDiarizer,
+    PyannoteDiarizer,
+    SpeakerTurn,
+    TokenCheck,
+    check_token,
+    pyannote_cached,
+)
+from .pipeline import PipelineOptions, TranscriptionPipeline
 from .segment_merger import SegmentMerger, MergeConfig, merge_segments
 from .formatters import OutputFormatter, TranscriptFormatter, format_output, save_result
 
@@ -110,7 +119,14 @@ __all__ = [
     
     # Вспомогательные классы
     "AudioProcessor",
-    "DiarizationManager",
+    "PyannoteDiarizer",
+    "HybridDiarizer",
+    "SpeakerTurn",
+    "TokenCheck",
+    "check_token",
+    "pyannote_cached",
+    "TranscriptionPipeline",
+    "PipelineOptions",
     "SegmentMerger",
     "MergeConfig",
     "merge_segments",

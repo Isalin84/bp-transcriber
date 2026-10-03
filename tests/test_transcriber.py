@@ -29,7 +29,8 @@ class TestGigaAMTranscriberInit:
         transcriber = GigaAMTranscriber()
         
         assert transcriber.model_name == "v3_e2e_rnnt"
-        assert transcriber._model is None  # Lazy loading
+        assert transcriber._pipeline is None  # Lazy loading
+        assert transcriber.get_model_info()["loaded"] is False
     
     def test_custom_model_name(self):
         """Тест с кастомным именем модели."""
@@ -41,8 +42,8 @@ class TestGigaAMTranscriberInit:
         """Тест автоопределения устройства."""
         transcriber = GigaAMTranscriber(device="auto")
         
-        # Должно быть либо cuda, либо cpu
-        assert transcriber.device in ["cuda", "cpu"]
+        # cuda > mps > cpu
+        assert transcriber.device in ["cuda", "mps", "cpu"]
     
     def test_device_explicit(self):
         """Тест с явным указанием устройства."""
@@ -90,11 +91,11 @@ class TestGigaAMTranscriberContextManager:
     def test_context_manager_cleanup(self):
         """Тест очистки при выходе из контекста."""
         transcriber = GigaAMTranscriber()
-        transcriber._model = Mock()  # Симуляция загруженной модели
+        transcriber._pipeline = Mock()  # Симуляция конвейера с моделями
         
         transcriber.cleanup()
         
-        assert transcriber._model is None
+        transcriber._pipeline.close.assert_called_once()
 
 
 class TestGigaAMTranscriberGetModelInfo:
@@ -175,73 +176,75 @@ class TestGigaAMTranscriberWithModel:
     
     def test_model_loaded(self, transcriber):
         """Тест загрузки модели."""
-        assert transcriber._model is not None
+        assert transcriber.pipeline.engine.loaded
     
     def test_preload(self):
         """Тест предзагрузки модели."""
         transcriber = GigaAMTranscriber(device="cpu")
         
-        assert transcriber._model is None
+        assert not transcriber.get_model_info()["loaded"]
         transcriber.preload()
-        assert transcriber._model is not None
+        assert transcriber.get_model_info()["loaded"]
         
         transcriber.cleanup()
+        assert not transcriber.get_model_info()["loaded"]
 
 
 class TestGigaAMTranscriberMocked:
-    """Тесты с моками (без реальной модели)."""
+    """transcribe() делегирует TranscriptionPipeline (без реальной модели)."""
     
     @pytest.fixture
-    def mock_transcriber(self):
-        """Фикстура транскрибера с замоканной моделью."""
+    def mocked(self, temp_dir):
         transcriber = GigaAMTranscriber()
-        
-        # Мокаем модель
-        mock_model = MagicMock()
-        mock_model.transcribe.return_value = "Тестовая транскрипция"
-        mock_model.transcribe_longform.return_value = [
-            {"transcription": "Первый сегмент", "boundaries": (0.0, 5.0)},
-            {"transcription": "Второй сегмент", "boundaries": (5.0, 10.0)},
-        ]
-        
-        transcriber._model = mock_model
-        
-        # Мокаем audio_processor
-        mock_processor = MagicMock()
-        mock_processor.is_audio_file.return_value = True
-        mock_processor.is_video_file.return_value = False
-        mock_processor.is_supported_file.return_value = True
-        mock_processor.get_duration.return_value = 5.0
-        mock_processor.get_media_info.return_value = {
-            "duration": 5.0,
-            "sample_rate": 16000,
-            "channels": 1,
-        }
-        
-        transcriber._audio_processor = mock_processor
-        
-        return transcriber
-    
-    def test_transcribe_short_mocked(self, mock_transcriber, temp_dir):
-        """Тест транскрипции короткого аудио (мок)."""
-        # Создаём фейковый файл
+        pipeline = MagicMock()
+        pipeline.run.return_value = TranscriptionResult(
+            text="Первый сегмент Второй сегмент",
+            segments=[
+                TranscriptionSegment(text="Первый сегмент", start=0.0, end=5.0, speaker="Спикер 1"),
+                TranscriptionSegment(text="Второй сегмент", start=5.0, end=10.0, speaker="Спикер 2"),
+            ],
+            duration=10.0,
+            language="ru",
+            model_name="v3_e2e_rnnt",
+            processing_time=1.0,
+            metadata={"source": "test.wav"},
+        )
+        transcriber._pipeline = pipeline
         audio_file = temp_dir / "test.wav"
         audio_file.write_bytes(b"fake audio content")
-        
-        mock_transcriber._audio_processor.get_duration.return_value = 10.0
-        
-        segments = mock_transcriber._transcribe_short(audio_file)
-        
-        assert len(segments) == 1
-        assert segments[0].text == "Тестовая транскрипция"
+        return transcriber, pipeline, audio_file
     
-    def test_transcribe_long_mocked(self, mock_transcriber, temp_dir):
-        """Тест транскрипции длинного аудио (мок)."""
-        audio_file = temp_dir / "test.wav"
-        audio_file.write_bytes(b"fake audio content")
+    def test_options_mapping(self, mocked):
+        """Параметры CLI переходят в PipelineOptions."""
+        transcriber, pipeline, audio_file = mocked
         
-        segments = mock_transcriber._transcribe_long(audio_file)
+        result = transcriber.transcribe(
+            audio_file, diarization="pyannote", num_speakers=2, min_segment_gap=0.7
+        )
         
-        assert len(segments) == 2
-        assert segments[0].text == "Первый сегмент"
-        assert segments[1].text == "Второй сегмент"
+        path, options = pipeline.run.call_args.args
+        assert path == audio_file
+        assert options.diarization == "pyannote"
+        assert options.num_speakers == 2
+        assert options.max_gap == 0.7
+        assert options.soft_max == 20.0
+        assert [s.text for s in result.segments] == ["Первый сегмент", "Второй сегмент"]
+    
+    def test_no_merge_splits_sentences(self, mocked):
+        """merge_same_speaker=False -> сегмент на каждое предложение."""
+        transcriber, pipeline, audio_file = mocked
+        
+        transcriber.transcribe(audio_file, merge_same_speaker=False)
+        
+        options = pipeline.run.call_args.args[1]
+        assert options.soft_max == 0.0
+        assert options.diarization == "none"
+    
+    def test_output_saved(self, mocked, temp_dir):
+        """Результат сохраняется в output_path."""
+        transcriber, _, audio_file = mocked
+        out = temp_dir / "out.srt"
+        
+        transcriber.transcribe(audio_file, output_path=out, output_format="srt")
+        
+        assert "Первый сегмент" in out.read_text(encoding="utf-8")

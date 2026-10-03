@@ -81,12 +81,12 @@ def test_diarization():
     print("\n🧪 Тест загрузки модели диаризации...")
     
     try:
-        from gigaam_transcriber import DiarizationManager
+        from gigaam_transcriber import PyannoteDiarizer
         
-        manager = DiarizationManager()
-        pipeline = manager.pipeline
+        diarizer = PyannoteDiarizer(token=os.getenv("HF_TOKEN"), device="cpu")
+        diarizer.load()
         
-        print("✅ Модель диаризации загружена успешно!")
+        print(f"✅ Модель диаризации загружена успешно: {diarizer.model_id}")
         return True
         
     except Exception as e:

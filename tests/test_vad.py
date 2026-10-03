@@ -2,7 +2,10 @@
 Тесты для модуля vad.
 """
 
+import os
 import random
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -107,3 +110,32 @@ class TestDetectSpeech:
                 self._audio(np.zeros(30 * SAMPLE_RATE)), on_progress=on_progress, cancel=token
             )
         assert seen and max(seen) < 0.5  # прервано рано, а не на последнем окне
+
+
+class TestTorchThreads:
+    """silero_vad при импорте ставит torch.set_num_threads(1) — vad.py это откатывает."""
+
+    def test_thread_count_unchanged_after_model_load(self):
+        # отдельный процесс: в текущем silero_vad уже мог быть импортирован
+        code = (
+            "import torch\n"
+            "torch.set_num_threads(3)\n"
+            "import numpy as np\n"
+            "from pathlib import Path\n"
+            "from gigaam_transcriber import vad\n"
+            "from gigaam_transcriber.audio_io import DecodedAudio\n"
+            "vad._get_model()\n"
+            "vad.detect_speech(DecodedAudio(pcm=np.zeros(16000, dtype=np.int16), source=Path('x')))\n"
+            "print(torch.get_num_threads())\n"
+        )
+        root = Path(__file__).resolve().parent.parent
+        out = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            env={**os.environ, "PYTHONPATH": str(root)},
+        )
+        assert out.returncode == 0, out.stderr
+        assert out.stdout.strip().splitlines()[-1] == "3"

@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from .audio_io import SAMPLE_RATE, DecodedAudio
+from .device import torch_threads
 from .progress import CancelToken
 
 _MODEL: Any = None
@@ -38,13 +39,30 @@ class Chunk:
         return self.end - self.start
 
 
+def _import_silero() -> Any:
+    """
+    Импортировать silero_vad, не меняя число потоков torch.
+
+    ``silero_vad/model.py`` при импорте вызывает ``torch.set_num_threads(1)``,
+    после чего весь CPU-инференс процесса (GigaAM, pyannote, speechbrain)
+    шёл бы в один поток. Сохраняем и восстанавливаем значение.
+    """
+    import torch
+
+    threads = torch.get_num_threads()
+    try:
+        import silero_vad
+    finally:
+        if torch.get_num_threads() != threads:
+            torch.set_num_threads(threads)
+    return silero_vad
+
+
 def _get_model() -> Any:
     """Загрузить модель Silero VAD один раз на процесс (вызывать под _MODEL_LOCK)."""
     global _MODEL
     if _MODEL is None:
-        from silero_vad import load_silero_vad
-
-        _MODEL = load_silero_vad()
+        _MODEL = _import_silero().load_silero_vad()
     return _MODEL
 
 
@@ -72,8 +90,8 @@ def detect_speech(
         return []
 
     import torch
-    from silero_vad import get_speech_timestamps
 
+    get_speech_timestamps = _import_silero().get_speech_timestamps
     last_reported = -1.0
 
     def on_silero_progress(percent: float) -> None:
@@ -86,7 +104,9 @@ def detect_speech(
             on_progress(fraction)
 
     waveform = torch.from_numpy(audio.float32())
-    with _MODEL_LOCK:
+    # Silero быстрее в один поток (замер M4 Max: 1 поток 1.4 с, 10 — 6.5 с на 10.7 мин),
+    # поэтому как и сам silero_vad ставим 1 поток, но только на время детекции.
+    with _MODEL_LOCK, torch_threads(1):
         timestamps = get_speech_timestamps(
             waveform,
             _get_model(),

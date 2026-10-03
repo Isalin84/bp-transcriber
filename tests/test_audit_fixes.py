@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 import numpy as np
 import pytest
@@ -70,10 +70,12 @@ class TestTranscribeStreamResultObject:
     @staticmethod
     def _run(answers: list) -> list[str]:
         transcriber = GigaAMTranscriber()
-        transcriber._model = Mock()
-        transcriber._model.transcribe.side_effect = answers
+        model = Mock()
+        model.transcribe.side_effect = answers
         audio = iter([np.zeros(21 * 16000, dtype=np.float32)])
-        with patch.dict(sys.modules, {"torchaudio": Mock()}):
+        with patch.dict(sys.modules, {"torchaudio": Mock()}), patch.object(
+            GigaAMTranscriber, "model", new_callable=PropertyMock, return_value=model
+        ):
             return [s.text for s in transcriber.transcribe_stream(audio, 16000, 20.0)]
 
     def test_object_with_text(self):
