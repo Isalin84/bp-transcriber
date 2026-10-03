@@ -292,12 +292,8 @@ class TranscriptionResult:
         return path
     
     def get_speakers(self) -> List[str]:
-        """Получить список уникальных спикеров."""
-        speakers = set()
-        for seg in self.segments:
-            if seg.speaker:
-                speakers.add(seg.speaker)
-        return sorted(speakers)
+        """Получить список уникальных спикеров в порядке первого появления."""
+        return list(dict.fromkeys(seg.speaker for seg in self.segments if seg.speaker))
     
     def filter_by_speaker(self, speaker: str) -> "TranscriptionResult":
         """Фильтрация по спикеру."""

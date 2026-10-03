@@ -202,7 +202,8 @@ class AudioProcessor:
             raise UnsupportedFormatError(input_path.suffix)
         
         # Определение выходного пути
-        if output_path is None:
+        is_temp = output_path is None
+        if is_temp:
             fd, output_path = tempfile.mkstemp(suffix=".wav")
             os.close(fd)
         output_path = Path(output_path)
@@ -229,6 +230,8 @@ class AudioProcessor:
             logger.debug(f"Audio normalized: {input_path} -> {output_path}")
             return output_path
         except subprocess.CalledProcessError as e:
+            if is_temp:
+                output_path.unlink(missing_ok=True)
             raise AudioProcessingError(
                 f"FFmpeg ошибка: {e.stderr}",
                 file_path=str(input_path),
@@ -258,7 +261,8 @@ class AudioProcessor:
             raise UnsupportedFormatError(video_path.suffix)
         
         # Определение выходного пути
-        if output_path is None:
+        is_temp = output_path is None
+        if is_temp:
             fd, output_path = tempfile.mkstemp(suffix=".wav")
             os.close(fd)
         output_path = Path(output_path)
@@ -291,6 +295,8 @@ class AudioProcessor:
             logger.debug(f"Audio extracted: {video_path} -> {output_path}")
             return output_path
         except subprocess.CalledProcessError as e:
+            if is_temp:
+                output_path.unlink(missing_ok=True)
             raise AudioProcessingError(
                 f"Ошибка извлечения аудио: {e.stderr}",
                 file_path=str(video_path),
