@@ -21,7 +21,7 @@ import secrets
 import sys
 import threading
 from pathlib import Path
-from socketserver import ThreadingMixIn
+from socketserver import TCPServer, ThreadingMixIn
 from typing import Any
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
@@ -63,6 +63,16 @@ class _ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
     daemon_threads = True
     # На Windows SO_REUSEADDR позволяет «перехватить» занятый порт — отключаем.
     allow_reuse_address = sys.platform != "win32"
+
+    def server_bind(self) -> None:
+        # HTTPServer.server_bind вызывает socket.getfqdn(host) — обратный DNS/mDNS-запрос.
+        # В собранном .app (macOS 15+, без разрешения «Локальная сеть») он висит ~35 с
+        # до таймаута и задерживает открытие окна. Имя хоста серверу не нужно.
+        TCPServer.server_bind(self)
+        host, port = self.server_address[:2]
+        self.server_name = str(host)
+        self.server_port = port
+        self.setup_environ()
 
 
 class _QuietHandler(WSGIRequestHandler):
