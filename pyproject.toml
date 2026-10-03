@@ -80,7 +80,7 @@ all = [
 ]
 
 [project.scripts]
-bp-transcriber = "bp_transcriber.app:main"
+bp-transcriber = "bp_transcriber.__main__:main"
 gigaam-transcribe = "gigaam_transcriber.cli:main"
 gigaam-batch = "gigaam_transcriber.cli:batch_main"
 
