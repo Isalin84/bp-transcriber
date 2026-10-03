@@ -127,7 +127,7 @@ def _trusted_checkpoint(name: str, root: str) -> Iterator[None]:
     Пропустить повторный md5 чекпоинта внутри ``gigaam.load_model``.
 
     ``model_store.ensure_model`` уже проверил md5 и оставил маркер
-    ``<name>.verified``; GigaAM же читает файл (~850 МБ) в память целиком
+    ``<name>.verified``; GigaAM же читает файл (~450 МБ) в память целиком
     ради хеша. Подмена действует, только если маркер совпадает с эталоном.
     """
     import gigaam

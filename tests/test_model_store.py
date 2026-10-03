@@ -114,6 +114,27 @@ class TestEnsureModel:
         assert [d for d, _ in progress] == sorted(d for d, _ in progress)
         assert model_store.is_model_available(NAME)
 
+    def test_concurrent_callers_download_once(self, server, root, monkeypatch):
+        import threading
+
+        monkeypatch.setattr(model_store, "_DOWNLOAD_BLOCK", 64)  # длинная загрузка — потоки пересекаются
+        errors: list[BaseException] = []
+
+        def worker() -> None:
+            try:
+                model_store.ensure_model(NAME)
+            except BaseException as exc:  # noqa: BLE001
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(10)
+        assert not errors
+        assert (root / f"{NAME}.ckpt").read_bytes() == CKPT
+        assert server.requests.count(f"{PRIMARY}/{NAME}.ckpt") == 1
+
     def test_sends_user_agent(self, server):
         model_store.ensure_model(NAME)
         assert all(agent and "BP-Transcriber" in agent for agent in server.user_agents)

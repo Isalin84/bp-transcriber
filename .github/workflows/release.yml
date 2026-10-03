@@ -235,7 +235,7 @@ jobs:
           # Необязательные картинки мастера: BMP из design/incoming (если лежат) -> /DWizardImage=..., /DWizardSmallImage=...
           $defs = @(python packaging/windows/prepare_wizard_images.py)
           if ($LASTEXITCODE -ne 0) { throw 'prepare_wizard_images.py завершился с ошибкой' }
-          & $iscc "/DAppVersion=$env:APP_VERSION" @defs packaging\windows\bp_transcriber.iss
+          & $iscc "/DAppVersion=$env:APP_VERSION" "/DRequireWebView2" @defs packaging\windows\bp_transcriber.iss
           if ($LASTEXITCODE -ne 0) { throw "ISCC завершился с кодом $LASTEXITCODE" }
           $setup = "dist\BP-Transcriber-$env:APP_VERSION-windows-x64-setup.exe"
           if (-not (Test-Path $setup)) { throw "Установщик не создан: $setup" }

@@ -19,9 +19,12 @@
 #define RepoRoot      "..\.."
 #define WebView2Setup "redist\MicrosoftEdgeWebview2Setup.exe"
 
-#if FileExists(SourcePath + WebView2Setup)
+#if FileExists(AddBackslash(SourcePath) + WebView2Setup)
   #define HaveWebView2Setup
 #else
+  #ifdef RequireWebView2
+    #error "WebView2 bootstrapper не найден (redist\MicrosoftEdgeWebview2Setup.exe), а релизная сборка его требует."
+  #endif
   #pragma message "WebView2 bootstrapper не найден: установщик не сможет доустановить WebView2 Runtime."
 #endif
 

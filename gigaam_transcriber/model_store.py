@@ -3,7 +3,7 @@
 
 Файлы скачиваются в ``<файл>.part`` с потоковым подсчётом md5 и атомарно
 переименовываются. После успешной проверки рядом создаётся маркер
-``<имя>.verified`` с md5, чтобы не пересчитывать хеш (≈850 МБ) при каждом запуске.
+``<имя>.verified`` с md5, чтобы не пересчитывать хеш (≈450 МБ) при каждом запуске.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ import hashlib
 import http.client
 import logging
 import os
+import threading
 import urllib.request
 from pathlib import Path
 from typing import Callable
@@ -33,6 +34,8 @@ _USER_AGENT = "BP-Transcriber/1.0 (+https://github.com/Isalin84/bp-transcriber)"
 _TIMEOUT_S = 30.0
 _DOWNLOAD_BLOCK = 1 << 20
 _HASH_BLOCK = 8 << 20
+# Одна загрузка за раз: задача и кнопка «Скачать модель» пишут в один и тот же .part
+_DOWNLOAD_LOCK = threading.Lock()
 
 
 class _DownloadError(Exception):
@@ -205,7 +208,9 @@ def ensure_model(
     root.mkdir(parents=True, exist_ok=True)
 
     tokenizer = _tokenizer_name(name)
-    if tokenizer and not (root / tokenizer).is_file():
-        _download(name, tokenizer, url_dir, None, None, cancel, root / tokenizer)
-    _ensure_checkpoint(name, root, url_dir, hashes[name], on_progress, cancel)
+    # Второй вызывающий ждёт первого и затем находит уже проверенный файл
+    with _DOWNLOAD_LOCK:
+        if tokenizer and not (root / tokenizer).is_file():
+            _download(name, tokenizer, url_dir, None, None, cancel, root / tokenizer)
+        _ensure_checkpoint(name, root, url_dir, hashes[name], on_progress, cancel)
     return root
