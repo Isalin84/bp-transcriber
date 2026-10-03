@@ -127,13 +127,13 @@ class UnicodePathType(click.Path):
 @click.option(
     '--no-merge',
     is_flag=True,
-    help='Не объединять сегменты одного спикера'
+    help='Сегмент на каждое предложение (не объединять фразы одного спикера)'
 )
 @click.option(
     '--gap',
     type=float,
-    default=0.5,
-    help='Максимальный gap для объединения сегментов (секунды)'
+    default=1.0,
+    help='Пауза (секунды), после которой начинается новый сегмент'
 )
 @click.option(
     '--device',
@@ -203,10 +203,10 @@ def main(
         print_banner()
     
     # Проверка HF_TOKEN для диаризации
-    if diarize != 'none' and not os.getenv('HF_TOKEN'):
+    if diarize == 'pyannote' and not os.getenv('HF_TOKEN'):
         click.echo(click.style(
             "⚠️  Предупреждение: HF_TOKEN не установлен. "
-            "Диаризация требует токен HuggingFace.\n"
+            "Если моделей pyannote нет в кэше, будет использована гибридная диаризация.\n"
             "   Установите: export HF_TOKEN=<ваш токен>\n",
             fg='yellow'
         ))
