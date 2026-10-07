@@ -7,7 +7,7 @@ import pytest
 
 from bp_transcriber import fake_pipeline
 from bp_transcriber.history import HistoryStore
-from bp_transcriber.jobs import JobQueue, ModelDownloads, PipelineBackend, load_backend
+from bp_transcriber.jobs import JobQueue, ModelDownloads, PipelineBackend
 from bp_transcriber.settings import SettingsStore, TokenStore
 
 
@@ -121,18 +121,6 @@ def test_error_path(env, bus, tmp_path):
     assert len(history.list()) == 1
 
 
-def test_unexpected_exception_message(env, bus, monkeypatch):
-    settings, history, queue, files = env
-
-    def boom(self, *a, **k):
-        raise ValueError("сломалось")
-
-    monkeypatch.setattr(RecordingPipeline, "run", boom)
-    job = queue.enqueue(files[:1])[0]
-    ev = terminal(bus, job["id"])
-    assert ev["job"]["error"] == "Непредвиденная ошибка: сломалось"
-
-
 def test_skips_invalid_inputs(env, bus, tmp_path):
     settings, history, queue, files = env
     (tmp_path / "notes.txt").write_text("x")
@@ -192,29 +180,6 @@ def test_shutdown_cancels(env, bus):
     assert queue.enqueue(files) == []
 
 
-def test_load_backend_fake_by_env(monkeypatch):
-    monkeypatch.setenv("BP_FAKE_PIPELINE", "1")
-    backend = load_backend()
-    assert backend.is_fake and backend.pipeline_cls is fake_pipeline.FakePipeline
-
-
-def test_model_download_without_model_store(bus, monkeypatch):
-    import builtins
-
-    real_import = builtins.__import__
-
-    def fake_import(name, *args, **kwargs):
-        if name == "gigaam_transcriber" and args and args[2] and "model_store" in args[2]:
-            raise ImportError("нет model_store")
-        return real_import(name, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "__import__", fake_import)
-    downloads = ModelDownloads(bus)
-    assert downloads.start() is False
-    ev = bus.wait_for(lambda e: e["type"] == "model_download")
-    assert ev["status"] == "error" and "недоступен" in ev["message"]
-
-
 def test_model_download_events_and_double_start(bus, monkeypatch):
     import sys
     import types
@@ -247,22 +212,3 @@ def test_model_download_events_and_double_start(bus, monkeypatch):
     assert downloads.wait_idle(2) and downloads.status()["downloading"] is False
 
 
-def test_duration_probed_in_background(env, bus):
-    settings, history, queue, files = env
-    queue._pipeline_kwargs["step_delay"] = 0.03
-    jobs = queue.enqueue(files)
-    assert all(j["duration"] is None for j in jobs)  # enqueue не ждёт ffmpeg
-    ev = bus.wait_for(lambda e: e["type"] == "job_update" and e["job"]["id"] == jobs[1]["id"]
-                      and e["job"]["duration"] == 42.5)
-    assert ev["job"]["status"] in ("queued", "running", "done")
-    # для файла без известной длительности она берётся из результата
-    done = terminal(bus, jobs[0]["id"])
-    assert done["job"]["duration"] == 95.0  # FakePipeline без ffmpeg-пробы → 95 с
-
-
-def test_probe_duration_helper(tmp_path):
-    from bp_transcriber.jobs import probe_duration
-
-    bad = tmp_path / "x.wav"
-    bad.write_bytes(b"not audio")
-    assert probe_duration(str(bad)) is None

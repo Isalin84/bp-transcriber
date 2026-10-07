@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import inspect
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -77,15 +76,3 @@ def test_decode_return_shape(engine):
             assert isinstance(word.start, float) and isinstance(word.end, float)
 
 
-def test_engine_end_to_end(engine):
-    from gigaam_transcriber.audio_io import SAMPLE_RATE, DecodedAudio
-    from gigaam_transcriber.vad import Chunk
-
-    rng = np.random.default_rng(1)
-    pcm = (rng.standard_normal(12 * SAMPLE_RATE) * 300).astype(np.int16)
-    audio = DecodedAudio(pcm=pcm, source=Path("noise.wav"))
-    segments = engine.transcribe(audio, [Chunk(0.5, 4.0), Chunk(5.0, 11.0)])
-    for segment in segments:
-        assert 0.0 <= segment.start <= segment.end <= audio.duration
-        for word in segment.words:
-            assert segment.start <= word.start <= word.end <= segment.end

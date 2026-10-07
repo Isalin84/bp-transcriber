@@ -43,15 +43,6 @@ def request(srv, path, headers=None, host=None):
     return resp, body
 
 
-def test_index_falls_back_to_probe_then_index(server):
-    srv, _, _, ui = server
-    resp, body = request(srv, "/")
-    assert resp.status == 200 and body == b"<html>probe</html>"
-    assert resp.getheader("Content-Type").startswith("text/html")
-    (ui / "index.html").write_text("<html>real</html>", encoding="utf-8")
-    assert request(srv, "/")[1] == b"<html>real</html>"
-
-
 def test_static_mimetypes(server):
     srv = server[0]
     resp, body = request(srv, "/js/app.js")

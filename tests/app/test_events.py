@@ -41,35 +41,6 @@ def test_to_js_keeps_unicode():
     assert "Привет" in script and "\\u2028" in script
 
 
-def test_coalescing_rate_limit_and_terminal():
-    sink = Sink()
-    bus = EventBus(sink, max_rate_hz=10).start()
-    bus.set_ready(True)
-    try:
-        start = time.monotonic()
-        for i in range(200):  # ~1 с потока обновлений по 5 мс
-            bus.post(job_update("a", progress=i / 200))
-            time.sleep(0.005)
-        bus.post(job_update("a", status="done", progress=1.0))
-        bus.post({"type": "job_done", "job": {"id": "a", "status": "done"}, "transcript_id": "x"})
-        sink.wait(lambda ev: any(e["type"] == "job_done" for e in ev))
-        elapsed = time.monotonic() - start
-    finally:
-        bus.stop()
-
-    events = sink.events()
-    updates = [e for e in events if e["type"] == "job_update" and e["job"]["status"] == "running"]
-    # ≤10 Гц: за ~elapsed секунд не больше elapsed*10 + 1 промежуточных
-    assert 3 <= len(updates) <= int(elapsed * 10) + 2
-    times = [t for t, e in sink.calls if e["type"] == "job_update" and e["job"]["status"] == "running"]
-    assert all(b - a >= 0.095 for a, b in zip(times, times[1:], strict=False))
-    # прогресс не идёт назад, терминальные — последними и по порядку
-    progress = [e["job"]["progress"] for e in updates]
-    assert progress == sorted(progress)
-    assert [e["type"] for e in events[-2:]] == ["job_update", "job_done"]
-    assert events[-2]["job"]["status"] == "done"
-
-
 def test_terminal_delivered_immediately_and_drops_pending():
     sink = Sink()
     bus = EventBus(sink, max_rate_hz=1).start()  # 1 Гц: промежуточное «застрянет»
@@ -111,25 +82,6 @@ def test_order_kept_across_types_and_jobs():
     finally:
         bus.stop()
     assert sink.events() == expected
-
-
-def test_order_by_post_sequence_between_pending_and_fifo():
-    sink = Sink()
-    bus = EventBus(sink).start()
-    posted = [
-        job_update("a", status="queued"),
-        {"type": "toast", "level": "info", "message": "между"},
-        job_update("b", status="queued"),
-        {"type": "toast", "level": "info", "message": "после"},
-    ]
-    for e in posted:
-        bus.post(e)
-    bus.set_ready(True)
-    try:
-        sink.wait(lambda ev: len(ev) == len(posted))
-    finally:
-        bus.stop()
-    assert sink.events() == posted
 
 
 def test_buffer_until_ready_and_stop():

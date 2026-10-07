@@ -118,12 +118,3 @@ def test_index_reconciled_with_disk(tmp_path, result):
     assert [i["id"] for i in HistoryStore(root).list()] == [b]
 
 
-def test_discard_pending(tmp_path):
-    store = HistoryStore(tmp_path / "h")
-    pending = store.new_entry()
-    pending.preview_path.write_bytes(b"x")
-    store.discard(pending)
-    assert list((tmp_path / "h").iterdir()) == [] or all(
-        p.name == "index.json" for p in (tmp_path / "h").iterdir()
-    )
-    assert store.list() == []

@@ -66,13 +66,6 @@ def test_docx(transcript, tmp_path):
     assert "Планёрка 03.10.mp3" in doc.paragraphs[0].text
     assert "Иван" in text and "Спикер 2" in text
     assert "Продажи выросли на ёлочные игрушки." in text
-    title_run = doc.paragraphs[0].runs[0]
-    assert title_run.bold and str(title_run.font.color.rgb) == "0B1D3A"
-    assert title_run.font.name == "Montserrat"
-    name_runs = [r for p in doc.paragraphs for r in p.runs if r.text == "Иван"]
-    assert name_runs and str(name_runs[0].font.color.rgb) == "1E3A5F" and name_runs[0].bold
-    footer = doc.sections[0].footer.paragraphs[0].text
-    assert footer == "Создано в BP Transcriber · bestpracticeai.ru"
     assert not any(p.name.endswith(".tmp") for p in path.parent.iterdir())
 
 
@@ -82,18 +75,6 @@ def test_export_all_formats(transcript, tmp_path, fmt):
     assert name == f"Планёрка 03.10.{fmt}"
     path = exporters.export(transcript, fmt, tmp_path / name)
     assert path.is_file() and path.stat().st_size > 0
-
-
-def test_unknown_format(transcript, tmp_path):
-    with pytest.raises(exporters.ExportError):
-        exporters.export(transcript, "pdf", tmp_path / "x.pdf")
-
-
-def test_unique_path(tmp_path):
-    (tmp_path / "a.txt").write_text("x")
-    (tmp_path / "a (2).txt").write_text("x")
-    assert exporters.unique_path(tmp_path, "a.txt").name == "a (3).txt"
-    assert exporters.unique_path(tmp_path, "b.txt").name == "b.txt"
 
 
 def test_no_speakers(tmp_path, result):

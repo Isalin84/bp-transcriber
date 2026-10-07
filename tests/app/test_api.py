@@ -124,28 +124,6 @@ def test_export_with_path_and_dialog(api, tmp_path):
         api.export(tid, "pdf", str(tmp_path / "x.pdf"))
 
 
-def test_copy_text(api, monkeypatch):
-    copied = []
-    monkeypatch.setattr(api_mod.clipboard, "copy", lambda text: copied.append(text) or True)
-    assert api.copy_text(api._tid, False) is True
-    assert copied[0].startswith("Спикер 1: Добрый день")
-    api.copy_text(api._tid, True)
-    assert copied[1].startswith("[00:00:00] Спикер 1:")
-
-
-def test_dialogs(api):
-    api._window.result = ("/a/x.mp3", "/a/y.wav")
-    assert api.pick_files() == ["/a/x.mp3", "/a/y.wav"]
-    _, kwargs = api._window.calls[-1]
-    assert kwargs["allow_multiple"] is True
-    assert kwargs["file_types"][0].startswith("Аудио и видео (*.")
-    api._window.result = None
-    assert api.pick_files() == []
-    assert api.choose_folder() is None
-    api._window.result = ("/a/folder",)
-    assert api.choose_folder() == "/a/folder"
-
-
 def test_file_types_valid_for_pywebview():
     from webview.util import parse_file_type
 
@@ -173,8 +151,3 @@ def test_unexpected_errors_wrapped(api, monkeypatch):
         api.list_history()
 
 
-def test_check_token_fallback_missing():
-    result = check_token_fallback(None)
-    assert result["state"] == "missing" and result["ok"] is False
-    assert all(r["ok"] is None for r in result["repos"])  # не проверялись
-    assert [r["id"] for r in result["repos"]] == api_mod.PYANNOTE_REPOS

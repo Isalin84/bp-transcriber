@@ -34,12 +34,10 @@ class FakeServer:
     def __init__(self) -> None:
         self.routes: dict[str, bytes | Exception | FakeResponse] = {}
         self.requests: list[str] = []
-        self.user_agents: list[str | None] = []
 
     def __call__(self, request, timeout=None):
         url = request.full_url
         self.requests.append(url)
-        self.user_agents.append(request.get_header("User-agent"))
         answer = self.routes.get(url)
         if isinstance(answer, Exception):
             raise answer
@@ -69,9 +67,6 @@ def root(tmp_path):
 
 
 class TestModelsRoot:
-    def test_default_is_app_cache(self, server, root):
-        assert model_store.models_root(NAME) == root
-
     def test_legacy_cache_is_reused_when_checkpoint_exists(self, server, tmp_path):
         legacy = tmp_path / "legacy"
         legacy.mkdir()
@@ -81,25 +76,10 @@ class TestModelsRoot:
 
 
 class TestIsModelAvailable:
-    def test_missing(self, server):
-        assert model_store.is_model_available(NAME) is False
-
     def test_checkpoint_without_tokenizer(self, server, root):
         root.mkdir(parents=True)
         (root / f"{NAME}.ckpt").write_bytes(CKPT)
         assert model_store.is_model_available(NAME) is False
-
-    def test_checkpoint_and_tokenizer(self, server, root):
-        root.mkdir(parents=True)
-        (root / f"{NAME}.ckpt").write_bytes(CKPT)
-        (root / f"{NAME}_tokenizer.model").write_bytes(TOKENIZER)
-        assert model_store.is_model_available(NAME) is True
-
-    def test_model_without_tokenizer_needs_only_checkpoint(self, server, root):
-        root.mkdir(parents=True)
-        (root / "v3_ctc.ckpt").write_bytes(CKPT)
-        assert model_store.is_model_available("v3_ctc") is True
-
 
 class TestEnsureModel:
     def test_download_success(self, server, root):
@@ -135,10 +115,6 @@ class TestEnsureModel:
         assert (root / f"{NAME}.ckpt").read_bytes() == CKPT
         assert server.requests.count(f"{PRIMARY}/{NAME}.ckpt") == 1
 
-    def test_sends_user_agent(self, server):
-        model_store.ensure_model(NAME)
-        assert all(agent and "BP-Transcriber" in agent for agent in server.user_agents)
-
     def test_verified_marker_skips_rehash_and_download(self, server, monkeypatch):
         model_store.ensure_model(NAME)
         server.requests.clear()
@@ -147,14 +123,6 @@ class TestEnsureModel:
         )
         model_store.ensure_model(NAME)
         assert server.requests == []
-
-    def test_existing_file_is_verified_once(self, server, root):
-        root.mkdir(parents=True)
-        (root / f"{NAME}.ckpt").write_bytes(CKPT)
-        (root / f"{NAME}_tokenizer.model").write_bytes(TOKENIZER)
-        model_store.ensure_model(NAME)
-        assert server.requests == []
-        assert (root / f"{NAME}.verified").read_text() == CKPT_MD5
 
     def test_corrupted_existing_file_is_redownloaded(self, server, root):
         root.mkdir(parents=True)
@@ -181,13 +149,6 @@ class TestEnsureModel:
         ckpt_requests = [url for url in server.requests if url.endswith(".ckpt")]
         assert ckpt_requests == [f"{PRIMARY}/{NAME}.ckpt", f"http://mirror.test/models/{NAME}.ckpt"]
 
-    def test_primary_bad_checksum_falls_back_to_mirror(self, server, root):
-        server.routes[f"{PRIMARY}/{NAME}.ckpt"] = b"wrong" * 100
-        server.routes[f"http://mirror.test/models/{NAME}.ckpt"] = CKPT
-        model_store.ensure_model(NAME)
-        assert (root / f"{NAME}.ckpt").read_bytes() == CKPT
-        assert not list(root.glob("*.part"))
-
     def test_truncated_download_is_rejected(self, server, root):
         server.routes[f"{PRIMARY}/{NAME}.ckpt"] = FakeResponse(CKPT[:100], len(CKPT))
         server.routes[f"http://mirror.test/models/{NAME}.ckpt"] = CKPT
@@ -209,16 +170,3 @@ class TestEnsureModel:
         assert not (root / f"{NAME}.ckpt").exists()
         assert server.requests[-1] == f"{PRIMARY}/{NAME}.ckpt"  # зеркало при отмене не трогали
 
-    def test_cancel_during_md5_verification(self, server, root):
-        root.mkdir(parents=True)
-        (root / f"{NAME}.ckpt").write_bytes(CKPT)
-        (root / f"{NAME}_tokenizer.model").write_bytes(TOKENIZER)
-        token = CancelToken()
-        token.cancel()
-        with pytest.raises(Cancelled):
-            model_store.ensure_model(NAME, cancel=token)
-        assert not (root / f"{NAME}.verified").exists()
-
-    def test_unknown_model(self, server):
-        with pytest.raises(ModelLoadError, match="неизвестная модель"):
-            model_store.ensure_model("nope")

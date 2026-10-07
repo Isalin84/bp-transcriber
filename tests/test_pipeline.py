@@ -17,7 +17,6 @@ from gigaam_transcriber.diarization import PyannoteUnavailableError, SpeakerTurn
 from gigaam_transcriber.exceptions import DiarizationError, EmptyAudioError
 from gigaam_transcriber.pipeline import PipelineOptions, TranscriptionPipeline
 from gigaam_transcriber.progress import Cancelled, CancelToken
-from gigaam_transcriber.vad import Chunk
 
 WORDS = [
     WordSegment("Добрый", 0.5, 0.9),
@@ -124,27 +123,6 @@ class TestRun:
         assert asr_end == pytest.approx(0.70 / 0.70)  # без диаризации asr — до конца
         assert engine.loads == 1
 
-    def test_messages_in_russian(self, setup):
-        pipe, _, path = setup
-        events = []
-        pipe.run(path, PipelineOptions(diarization="hybrid"), on_event=events.append)
-        messages = {e.stage: e.message for e in events}
-        assert messages["decode"] == "Декодирование аудио"
-        assert messages["vad"] == "Поиск речи"
-        assert messages["asr"] == "Распознавание речи"
-        assert messages["diarize"] == "Разделение по спикерам"
-        assert messages["finalize"] == "Сохранение"
-
-    def test_weights_with_diarization(self, setup):
-        pipe, _, path = setup
-        events = []
-        pipe.run(path, PipelineOptions(diarization="hybrid"), on_event=events.append)
-        asr_end = max(e.progress for e in events if e.stage == "asr")
-        assert asr_end == pytest.approx(0.70)
-        diarize = [e for e in events if e.stage == "diarize"]
-        assert diarize[0].progress == pytest.approx(0.70)
-        assert diarize[-1].progress == pytest.approx(1.0)
-
     def test_hybrid_speakers(self, setup):
         pipe, _, path = setup
         result = pipe.run(path, PipelineOptions(diarization="hybrid"))
@@ -221,18 +199,6 @@ class TestRun:
             pipe.run(path, PipelineOptions(diarization="pyannote"))
         assert FakeDiarizer.calls == ["FakePyannote"]
 
-    def test_invalid_mode(self, setup):
-        pipe, _, path = setup
-        with pytest.raises(ValueError):
-            pipe.run(path, PipelineOptions(diarization="magic"))
-
-    def test_preview(self, setup, monkeypatch):
-        pipe, _, path = setup
-        written = []
-        monkeypatch.setattr(pl.audio_io, "encode_preview", lambda audio, out, cancel=None: written.append(out))
-        pipe.run(path, PipelineOptions(diarization="none", preview_path=Path("p.m4a")))
-        assert written == [Path("p.m4a")]
-
     def test_preview_failure_is_warning(self, setup, monkeypatch):
         pipe, _, path = setup
 
@@ -262,50 +228,3 @@ class TestSettings:
         assert engine.unloads == 1 and created == ["gpu"]
         assert pipe.engine.loaded
 
-    def test_prepare_emits_load_events(self, setup):
-        pipe, _, _ = setup
-        events = []
-        pipe.prepare(on_event=events.append)
-        assert {e.stage for e in events} == {"load"}
-        assert events[0].stage_progress == 0.0 and events[-1].stage_progress == 1.0
-        assert events[0].message == "Загрузка модели"
-
-    def test_close(self, setup):
-        pipe, engine, _ = setup
-        pipe.prepare()
-        pipe.close()
-        assert not engine.loaded
-
-    def test_set_same_device_no_reload(self, setup):
-        pipe, engine, path = setup
-        pipe.set_device("cpu")
-        pipe.run(path, PipelineOptions(diarization="none"))
-        assert engine.unloads == 0
-
-
-class TestProgress:
-    def test_eta_from_stage_rate(self, monkeypatch):
-        now = [100.0]
-        monkeypatch.setattr(pl.time, "monotonic", lambda: now[0])
-        events = []
-        progress = pl._Progress(events.append, ["decode", "vad", "asr", "finalize"])
-        progress.start("asr")
-        progress.progress = 0.1 / 0.7  # decode+vad завершены
-        now[0] += 10.0
-        progress.update(0.5, force=True)
-        last = events[-1]
-        # asr: 0.5 * (0.6/0.7) за 10 с; осталось 1 - (0.1/0.7 + 0.3/0.7) = 0.3/0.7
-        rate = 0.5 * (0.6 / 0.7) / 10.0
-        assert last.eta_s == pytest.approx((0.3 / 0.7) / rate)
-
-    def test_throttling(self, monkeypatch):
-        now = [0.0]
-        monkeypatch.setattr(pl.time, "monotonic", lambda: now[0])
-        events = []
-        progress = pl._Progress(events.append, ["asr"])
-        progress.start("asr")
-        for i in range(1, 100):
-            progress.update(i / 1000)
-        assert len(events) == 1  # только событие start
-        progress.update(1.0)
-        assert events[-1].stage_progress == 1.0

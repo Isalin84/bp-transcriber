@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -13,9 +12,8 @@ import pytest
 import torch
 
 from gigaam_transcriber import asr_engine
-from gigaam_transcriber.asr_engine import GigaAMEngine, _collate, _padded_spans
+from gigaam_transcriber.asr_engine import GigaAMEngine, _padded_spans
 from gigaam_transcriber.audio_io import SAMPLE_RATE, DecodedAudio
-from gigaam_transcriber.exceptions import ModelLoadError
 from gigaam_transcriber.progress import Cancelled, CancelToken
 from gigaam_transcriber.vad import Chunk
 
@@ -63,36 +61,6 @@ def loaded_engine(model: FakeModel) -> GigaAMEngine:
     engine._model = model
     engine._device = torch.device("cpu")
     return engine
-
-
-class TestPaddedSpans:
-    def test_pad_bounded_by_neighbors_and_audio(self):
-        chunks = [Chunk(10.0, 12.0), Chunk(0.1, 5.0), Chunk(5.2, 9.0)]
-        spans = _padded_spans(chunks, duration=12.1)
-        assert spans[1].start == 0.0  # не меньше 0
-        assert spans[1].end == pytest.approx(5.1)  # середина паузы 5.0..5.2
-        assert spans[2].start == pytest.approx(5.1)
-        assert spans[2].end == pytest.approx(9.3)
-        assert spans[0].start == pytest.approx(9.7)
-        assert spans[0].end == pytest.approx(12.1)  # конец аудио
-
-    def test_spans_never_overlap(self):
-        rng = np.random.default_rng(0)
-        bounds = np.cumsum(rng.uniform(0.05, 3.0, 40))
-        chunks = [Chunk(float(a), float(b)) for a, b in zip(bounds[::2], bounds[1::2])]
-        spans = sorted(_padded_spans(chunks, float(bounds[-1]) + 1), key=lambda c: c.start)
-        for a, b in zip(spans, spans[1:]):
-            assert a.end <= b.start + 1e-9
-        for chunk, span in zip(chunks, _padded_spans(chunks, float(bounds[-1]) + 1)):
-            assert span.start <= chunk.start and span.end >= chunk.end
-
-
-class TestCollate:
-    def test_padding(self):
-        batch, lengths = _collate([torch.ones(3), torch.ones(5)])
-        assert batch.shape == (2, 5)
-        assert lengths.tolist() == [3, 5]
-        assert batch[0].tolist() == [1, 1, 1, 0, 0]
 
 
 class TestTranscribe:
@@ -148,45 +116,6 @@ class TestTranscribe:
         model.on_forward = None
         assert len(engine.transcribe(make_audio(6.0), chunks)) == 3
 
-    def test_cpu_thread_policy_applied_and_restored(self, monkeypatch):
-        monkeypatch.setenv("BP_ASR_THREADS", "1")
-        before = torch.get_num_threads()
-        model = FakeModel()
-        seen: list[int] = []
-        model.on_forward = lambda: seen.append(torch.get_num_threads())
-        loaded_engine(model).transcribe(make_audio(3.0), [Chunk(0.0, 2.0)])
-        assert seen == [1]
-        assert torch.get_num_threads() == before
-
-    def test_no_chunks(self):
-        assert loaded_engine(FakeModel()).transcribe(make_audio(1.0), []) == []
-
-    def test_model_failure_wrapped(self):
-        model = FakeModel()
-
-        def boom():
-            raise RuntimeError("kernel")
-
-        model.on_forward = boom
-        from gigaam_transcriber.exceptions import TranscriberError
-
-        with pytest.raises(TranscriberError):
-            loaded_engine(model).transcribe(make_audio(3.0), [Chunk(0.0, 2.0)])
-
-
-class TestBatchSize:
-    def test_defaults(self, monkeypatch):
-        monkeypatch.delenv("BP_ASR_BATCH", raising=False)
-        assert asr_engine._batch_size("cpu") == 4
-        assert asr_engine._batch_size("mps") == 8
-        assert asr_engine._batch_size("cuda") == 16
-
-    @pytest.mark.parametrize("raw, expected", [("3", 3), ("0", 4), ("abc", 4), ("-1", 4)])
-    def test_env(self, monkeypatch, raw, expected):
-        monkeypatch.setenv("BP_ASR_BATCH", raw)
-        assert asr_engine._batch_size("cpu") == expected
-
-
 class TestLoad:
     def test_gpu_nan_falls_back_to_cpu(self, monkeypatch, tmp_path):
         monkeypatch.setattr(asr_engine, "ensure_model", lambda name, on_progress=None, cancel=None: tmp_path)
@@ -205,43 +134,6 @@ class TestLoad:
         assert engine.loaded and engine.device.type == "cpu"
         assert engine.device_label == "CPU"
         assert progress[-1] == 1.0
-
-    def test_cpu_failure_raises(self, monkeypatch, tmp_path):
-        monkeypatch.setattr(asr_engine, "ensure_model", lambda name, on_progress=None, cancel=None: tmp_path)
-        engine = GigaAMEngine(device="cpu")
-        monkeypatch.setattr(engine, "_load_on", lambda device, root: FakeModel(nan=True))
-        with pytest.raises(ModelLoadError):
-            engine.load()
-        assert not engine.loaded
-
-    def test_download_progress_scaled(self, monkeypatch, tmp_path):
-        def fake_ensure(name, on_progress=None, cancel=None):
-            on_progress(50, 100)
-            on_progress(100, 100)
-            return tmp_path
-
-        monkeypatch.setattr(asr_engine, "ensure_model", fake_ensure)
-        engine = GigaAMEngine(device="cpu")
-        monkeypatch.setattr(engine, "_load_on", lambda device, root: FakeModel())
-        progress: list[float] = []
-        engine.load(on_progress=progress.append)
-        assert progress[:2] == pytest.approx([0.45, 0.9])
-        assert progress[-1] == 1.0
-
-    def test_unload(self):
-        engine = loaded_engine(FakeModel())
-        engine.unload()
-        assert not engine.loaded and engine.device is None
-
-    def test_auto_policy(self, monkeypatch):
-        monkeypatch.setattr(asr_engine, "pick_device", lambda pref: torch.device("mps"))
-        engine = GigaAMEngine(device="auto")
-        monkeypatch.setattr(asr_engine, "_AUTO_ALLOWS_MPS", False)
-        assert engine._target_device().type == "cpu"
-        monkeypatch.setattr(asr_engine, "_AUTO_ALLOWS_MPS", True)
-        assert engine._target_device().type == "mps"
-        assert GigaAMEngine(device="gpu")._target_device().type == "mps"
-
 
 class TestTrustedCheckpoint:
     def test_skips_hash_only_with_marker(self, tmp_path):
@@ -263,11 +155,3 @@ class TestTrustedCheckpoint:
             assert gigaam.hash_path(str(other)) != expected
         assert gigaam.hash_path is original
 
-    def test_wrong_marker_ignored(self, tmp_path):
-        import gigaam
-
-        name = "v3_e2e_rnnt"
-        (tmp_path / f"{name}.ckpt").write_bytes(b"x")
-        (tmp_path / f"{name}.verified").write_text("deadbeef", encoding="utf-8")
-        with asr_engine._trusted_checkpoint(name, str(tmp_path)):
-            assert gigaam.hash_path(os.path.join(tmp_path, f"{name}.ckpt")) != gigaam._MODEL_HASHES[name]

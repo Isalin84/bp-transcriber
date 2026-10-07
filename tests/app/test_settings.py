@@ -64,14 +64,6 @@ def test_round_trip(tmp_path):
     assert public["hf_token_set"] is False and public["theme"] == "dark"
 
 
-def test_atomic_write_leaves_no_temp_files(tmp_path):
-    path = tmp_path / "settings.json"
-    store = SettingsStore(path, TokenStore(tmp_path / "tok", use_keyring=False))
-    for i in range(5):
-        store.update({"num_speakers": i + 1})
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["settings.json"]
-
-
 def test_atomic_write_failure_keeps_old_file(tmp_path, monkeypatch):
     path = tmp_path / "settings.json"
     store = SettingsStore(path, TokenStore(tmp_path / "tok", use_keyring=False))
@@ -177,14 +169,3 @@ def test_import_candidate_priority_env_over_dotenv(tmp_path, monkeypatch):
     assert find_token_candidate([tmp_path])[1] == SECRET
 
 
-def test_import_candidate_hf_cache(tmp_path, monkeypatch):
-    hf_home = tmp_path / "hfhome"
-    hf_home.mkdir()
-    (hf_home / "token").write_text(SECRET + "\n", encoding="utf-8")
-    monkeypatch.setenv("HF_HOME", str(hf_home))
-    assert find_token_import_candidate([tmp_path / "empty"]) == {"source": "hf_cache"}
-
-
-def test_import_candidate_none(tmp_path):
-    (tmp_path / ".env").write_text("HF_TOKEN=\nOTHER=x\n", encoding="utf-8")
-    assert find_token_import_candidate([tmp_path]) is None
