@@ -153,13 +153,15 @@ python -m bp_transcriber --fake     # имитация распознавани�
 python -m bp_transcriber --selftest # проверка зависимостей без окна
 ```
 
-Тесты (быстрые, без модели и без окна):
+Проверки. CI на GitHub нет: перед каждым пушем в `master` всё запускается локально (тесты, форматы ffmpeg, selftest, около 30 с). Хук `pre-push` делает это сам, его нужно один раз подключить в клоне:
 
 ```bash
-python -m pytest -q -m "not slow"
+git config core.hooksPath .githooks
+bash scripts/check.sh               # то же вручную
+python -m pytest -m "not slow"      # только быстрые тесты, без модели GigaAM
 ```
 
-Сборка установщиков (PyInstaller, DMG, Inno Setup) описана в [packaging/README.md](packaging/README.md). Сборку на GitHub Actions запускает тег `v*` (см. `.github/workflows/release.yml`): он собирает оба установщика и создаёт черновик релиза.
+Сборка установщиков (PyInstaller, DMG, Inno Setup) описана в [packaging/README.md](packaging/README.md). Установщики собираются локально, на своей платформе, а релиз создаётся вручную; текст релиза лежит в `packaging/release-notes-template.md`.
 
 ### Python API и CLI
 

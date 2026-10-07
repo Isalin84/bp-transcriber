@@ -37,7 +37,7 @@
 - [x] PyInstaller spec, ffmpeg LGPL 7.1.3 (4.7 МБ), --selftest, DMG (146 МБ, .app 534 МБ) — 949cb5d
 - [x] пересобрать и прогнать реальную расшифровку после A2 (frozen: pyannote 21.9 с, hybrid 6.7 с на 2:43, 2 спикера)
 
-## Фаза 7. Windows + CI — Sonnet/Opus
+## Фаза 7. Windows + CI — Sonnet/Opus (CI удалён 2026-10-07, проверки локально: scripts/check.sh)
 - [x] ci.yml, release.yml, Inno Setup, README — 43fbc1a (Windows-часть проверяется только в CI)
 - [x] публикация (разрешена пользователем после проверки): github.com/Isalin84/bp-transcriber, зеркало модели models-v1
 - [x] release v1.0.0 опубликован: DMG проверен (sha256, codesign, selftest, расшифровка из образа), Windows selftest в CI зелёный

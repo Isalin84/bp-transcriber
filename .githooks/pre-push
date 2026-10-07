@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Пуш в master только после локальной проверки (scripts/check.sh).
+# Подключение (один раз на клон): git config core.hooksPath .githooks
+# Обойти в крайнем случае: git push --no-verify
+set -euo pipefail
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "refs/heads/master" ]; then
+    exec bash "$(git rev-parse --show-toplevel)/scripts/check.sh"
+  fi
+done

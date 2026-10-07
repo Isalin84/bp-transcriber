@@ -69,7 +69,7 @@ codesign --verify --deep --strict --verbose=2 "dist/BP Transcriber.app"
 
 - **Приложение не подписано Developer ID и не нотариально заверено.** Gatekeeper блокирует первый
   запуск — инструкция для пользователя в `packaging/macos/Как открыть.txt` (лежит в DMG).
-- Оформление окна DMG делает Finder через AppleScript. Без GUI-сессии (CI) или без разрешения
+- Оформление окна DMG делает Finder через AppleScript. Без GUI-сессии (по SSH) или без разрешения
   на управление Finder скрипт собирает простой образ (osascript ограничен таймаутом,
   `BP_DMG_OSASCRIPT_TIMEOUT`, по умолчанию 60 с).
 - Перетаскивание файлов на иконку в Dock не поддерживается (нет обработки Apple Events open-document).
@@ -97,3 +97,31 @@ codesign --verify --deep --strict --verbose=2 "dist/BP Transcriber.app"
    xcrun stapler staple dist/BP-Transcriber-*.dmg
    spctl -a -t open --context context:primary-signature -v dist/BP-Transcriber-*.dmg
    ```
+
+## Windows (на Windows-машине, PowerShell)
+
+Раньше это делал GitHub Actions; теперь вручную. Нужны Python 3.12, Inno Setup 6, полный ffmpeg в PATH
+(только для проверки форматов).
+
+```powershell
+pip install -r requirements/lock-win-x64.txt --extra-index-url https://download.pytorch.org/whl/cpu
+pip install --no-deps -r requirements/gigaam.txt; pip install --no-deps -e .
+./packaging/windows/fetch_ffmpeg.ps1                    # LGPL ffmpeg -> vendor/ffmpeg/ffmpeg.exe
+python scripts/check_formats.py
+python packaging/build_app.py --clean
+& "dist\BP Transcriber\BP Transcriber.exe" --selftest   # отчёт также в %BP_HOME%\logs
+# WebView2 bootstrapper (обязателен для /DRequireWebView2; проверить подпись Microsoft)
+Invoke-WebRequest https://go.microsoft.com/fwlink/p/?LinkId=2124703 -OutFile packaging/windows/redist/MicrosoftEdgeWebview2Setup.exe
+$defs = @(python packaging/windows/prepare_wizard_images.py)
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=<версия>" "/DRequireWebView2" @defs packaging\windows\bp_transcriber.iss
+# -> dist\BP-Transcriber-<версия>-windows-x64-setup.exe
+```
+
+## Релиз (вручную)
+
+1. `bash scripts/check.sh`, версия в `bp_transcriber/__init__.py`, тег `v<версия>`.
+2. Установщики собираются на своих платформах (DMG на Mac, setup.exe на Windows) и проверяются selftest.
+3. `shasum -a 256 BP-Transcriber-* > SHA256SUMS.txt`
+4. Текст релиза: `packaging/release-notes-template.md` (подставить `{{VERSION}}` и `{{TAG}}`), затем
+   `gh release create v<версия> --draft --notes-file release-notes.md BP-Transcriber-* SHA256SUMS.txt`.
+   Публикует черновик человек после проверки на реальных машинах.
