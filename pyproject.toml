@@ -48,6 +48,7 @@ dependencies = [
     "click>=8.0.0",
     "huggingface_hub>=0.20.0",
     "platformdirs>=4",
+    "truststore>=0.10",
     "silero-vad>=5.1",
     "pydub>=0.25.0",
 ]

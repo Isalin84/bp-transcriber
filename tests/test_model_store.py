@@ -35,7 +35,7 @@ class FakeServer:
         self.routes: dict[str, bytes | Exception | FakeResponse] = {}
         self.requests: list[str] = []
 
-    def __call__(self, request, timeout=None):
+    def __call__(self, request, timeout=None, context=None):
         url = request.full_url
         self.requests.append(url)
         answer = self.routes.get(url)

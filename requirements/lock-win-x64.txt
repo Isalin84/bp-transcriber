@@ -403,6 +403,7 @@ tqdm==4.70.1
     #   speechbrain
 truststore==0.10.4
     # via
+    #   gigaam-transcriber (pyproject.toml)
     #   httpcore2
     #   httpx2
 typing-extensions==4.16.0
