@@ -161,7 +161,7 @@ bash scripts/check.sh               # то же вручную
 python -m pytest -m "not slow"      # только быстрые тесты, без модели GigaAM
 ```
 
-Сборка установщиков (PyInstaller, DMG, Inno Setup) описана в [packaging/README.md](packaging/README.md). Установщики собираются локально, на своей платформе, а релиз создаётся вручную; текст релиза лежит в `packaging/release-notes-template.md`.
+Сборка установщиков (PyInstaller, DMG, Inno Setup) описана в [packaging/README.md](packaging/README.md). DMG собирается локально на Mac, установщик Windows собирает и публикует в релиз GitHub Actions по тегу `v*`; текст релиза лежит в `packaging/release-notes-template.md`.
 
 ### Python API и CLI
 

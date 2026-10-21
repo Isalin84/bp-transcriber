@@ -5,12 +5,14 @@
 (API для JS, очередь задач, история, настройки, экспорт, UI в `ui/`). План и уроки: `tasks/todo.md`, `tasks/lessons.md`.
 Remotes: `bp` (Isalin84/bp-transcriber, наш) и `origin` (upstream DialogScribe) — пушить только в `bp`.
 
-## CI/CD нет — только локальные проверки
+## Проверки локальные, в GitHub Actions — только сборка Windows
 
-- GitHub Actions удалены намеренно (2026-10-07). Не добавлять `.github/workflows`, dependabot и т.п.
+- Тестового CI нет намеренно (2026-10-07): не добавлять тесты в Actions, dependabot и т.п.
+- Единственный workflow — `.github/workflows/windows-release.yml` (2026-10-21): по тегу `v*` собирает
+  setup.exe, гоняет `--selftest` и публикует релиз. Windows-сборку на Mac не сделать.
 - Перед каждым пушем в `master`: `bash scripts/check.sh` (pytest, `scripts/check_formats.py`, `--selftest`, ~30 с).
   Хук `.githooks/pre-push` запускает его сам (`git config core.hooksPath .githooks`). `--no-verify` — только по просьбе пользователя.
-- Красная проверка = не пушить. Сборки и релиз — вручную, см. `packaging/README.md`.
+- Красная проверка = не пушить. Релиз — раздел «Релиз» в `packaging/README.md` (DMG собирается локально).
 
 ## Политика тестов
 

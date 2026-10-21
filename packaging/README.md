@@ -98,10 +98,11 @@ codesign --verify --deep --strict --verbose=2 "dist/BP Transcriber.app"
    spctl -a -t open --context context:primary-signature -v dist/BP-Transcriber-*.dmg
    ```
 
-## Windows (на Windows-машине, PowerShell)
+## Windows
 
-Раньше это делал GitHub Actions; теперь вручную. Нужны Python 3.12, Inno Setup 6, полный ffmpeg в PATH
-(только для проверки форматов).
+Установщик собирает GitHub Actions (`.github/workflows/windows-release.yml`) по тегу `v*`;
+ручной запуск workflow кладёт setup.exe в артефакты без релиза. Локально, на Windows-машине
+(PowerShell; нужны Python 3.12, Inno Setup 6, полный ffmpeg в PATH для проверки форматов):
 
 ```powershell
 pip install -r requirements/lock-win-x64.txt --extra-index-url https://download.pytorch.org/whl/cpu
@@ -117,11 +118,18 @@ $defs = @(python packaging/windows/prepare_wizard_images.py)
 # -> dist\BP-Transcriber-<версия>-windows-x64-setup.exe
 ```
 
-## Релиз (вручную)
+## Релиз
 
-1. `bash scripts/check.sh`, версия в `bp_transcriber/__init__.py`, тег `v<версия>`.
-2. Установщики собираются на своих платформах (DMG на Mac, setup.exe на Windows) и проверяются selftest.
-3. `shasum -a 256 BP-Transcriber-* > SHA256SUMS.txt`
-4. Текст релиза: `packaging/release-notes-template.md` (подставить `{{VERSION}}` и `{{TAG}}`), затем
-   `gh release create v<версия> --draft --notes-file release-notes.md BP-Transcriber-* SHA256SUMS.txt`.
-   Публикует черновик человек после проверки на реальных машинах.
+1. Версия в `bp_transcriber/__init__.py`, коммит, `git push bp master` (хук прогонит `scripts/check.sh`).
+2. DMG на Mac: `build_app.py --clean --selftest` и `make_dmg.sh` (см. выше).
+3. Черновик релиза с DMG и текстом (`packaging/release-notes-template.md`, подставить `{{VERSION}}`/`{{TAG}}`
+   и заполнить «Что нового»):
+   ```bash
+   git tag v<версия> && git push bp v<версия>
+   shasum -a 256 dist/BP-Transcriber-*.dmg | sed 's| dist/| |' > SHA256SUMS.txt
+   gh release create v<версия> --draft --verify-tag --title "BP Transcriber v<версия>" \
+     --notes-file release-notes.md dist/BP-Transcriber-<версия>-macos-arm64.dmg SHA256SUMS.txt
+   ```
+4. Тег запускает `windows-release.yml`: он соберёт setup.exe, проверит его selftest, добавит в релиз,
+   допишет строку в `SHA256SUMS.txt` и опубликует релиз. Если черновика нет — создаст его из шаблона
+   (с незаполненным «Что нового»). Ход сборки: `gh run watch -R Isalin84/bp-transcriber`.
