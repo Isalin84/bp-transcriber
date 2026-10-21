@@ -12,14 +12,12 @@ import hashlib
 import http.client
 import logging
 import os
-import ssl
 import threading
 import urllib.request
 from pathlib import Path
 from typing import Callable
 
 import platformdirs
-import truststore
 
 from .exceptions import ModelLoadError
 from .progress import CancelToken
@@ -42,17 +40,6 @@ _DOWNLOAD_LOCK = threading.Lock()
 
 class _DownloadError(Exception):
     """Сбой скачивания одного файла (текст — по-русски, для пользователя)."""
-
-
-def _ssl_context() -> ssl.SSLContext:
-    """
-    TLS-контекст с проверкой сертификатов средствами ОС.
-
-    Встроенный OpenSSL видит только уже установленные корни: на свежей Windows
-    корня Let's Encrypt (ISRG Root X1) может не быть, и оба источника падают.
-    Системная проверка докачивает корни сама и учитывает корпоративные.
-    """
-    return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
 
 def _gigaam_tables() -> tuple[str, dict[str, str]]:
@@ -113,12 +100,8 @@ def _fetch(
     part = dest.with_name(dest.name + ".part")
     digest = hashlib.md5()
     request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
-    context = _ssl_context()
     try:
-        with (
-            urllib.request.urlopen(request, timeout=_TIMEOUT_S, context=context) as response,
-            part.open("wb") as out,
-        ):
+        with urllib.request.urlopen(request, timeout=_TIMEOUT_S) as response, part.open("wb") as out:
             total = int(response.headers.get("Content-Length") or 0)
             downloaded = 0
             while block := response.read(_DOWNLOAD_BLOCK):
@@ -137,10 +120,6 @@ def _fetch(
     except (OSError, http.client.HTTPException) as exc:
         part.unlink(missing_ok=True)
         logger.warning("Не удалось скачать %s: %s", url, exc)
-        if isinstance(getattr(exc, "reason", exc), ssl.SSLCertVerificationError):
-            raise _DownloadError(
-                "не удалось проверить сертификат сервера (проверьте дату и время на компьютере)"
-            ) from exc
         raise _DownloadError("нет соединения с сервером или файл недоступен") from exc
     except BaseException:
         part.unlink(missing_ok=True)
